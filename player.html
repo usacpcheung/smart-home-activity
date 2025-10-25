@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Player — Smart Home Activity</title>
+  <link rel="stylesheet" href="css/base.css"/>
+  <link rel="stylesheet" href="css/player.css"/>
+</head>
+<body>
+<header class="bar"><h1>Player</h1></header>
+
+<main class="grid">
+  <aside class="pane" id="deviceListPane">
+    <h2>Device List</h2>
+    <div id="deviceList"><em>Loading…</em></div>
+  </aside>
+
+  <section class="stage-wrap">
+    <div class="aims">
+      <h3>Aims</h3>
+      <ul id="aimsList"></ul>
+      <div class="row">
+        <button id="btnConnect">Connect All</button>
+        <button id="btnSubmit">Submit My Design</button>
+        <button id="btnReset">Reset</button>
+      </div>
+    </div>
+    <div id="playerStage" class="stage" aria-label="Play Stage"></div>
+    <div id="overlay" class="overlay" aria-hidden="true"></div>
+  </section>
+
+  <aside class="pane">
+    <h2>Log</h2>
+    <pre id="log" class="log"></pre>
+  </aside>
+</main>
+
+<footer class="bar foot">
+  <small>Drag, place on anchors, connect, submit. Animations show per-aim success/fail.</small>
+</footer>
+
+<script type="module" src="js/player/player-app.js"></script>
+</body>
+</html>

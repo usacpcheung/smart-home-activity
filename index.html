@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Smart Home Activity</title>
+  <link rel="stylesheet" href="css/base.css"/>
+</head>
+<body>
+<header class="bar">
+  <h1>Smart Home Activity</h1>
+</header>
+
+<main class="container">
+  <section class="card">
+    <h2>Choose Mode</h2>
+    <p><strong>Editor</strong>: build scenarios (upload background, mark anchors, choose devices, define aims/rules, export JSON).</p>
+    <p><strong>Player</strong>: students play a scenario (device selection, placement, connect, submit, animations).</p>
+    <div class="row">
+      <a class="btn" href="editor.html">Open Editor</a>
+      <a class="btn" href="player.html?scenario=scenarios/case01/scenario.json">Open Player (Sample)</a>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3>Scenarios</h3>
+    <p>Upload your scenario folder (e.g. <code>/scenarios/mycase</code>) containing <code>scenario.json</code> and its background image.</p>
+  </section>
+</main>
+
+<footer class="bar foot">
+  <small>Static, front-end only. Apache / GitHub Pages friendly.</small>
+</footer>
+</body>
+</html>

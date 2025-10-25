@@ -1,0 +1,34 @@
+{
+  "categories": [
+    {
+      "id": "hubs",
+      "name": "Hubs & Assistants",
+      "devices": [
+        { "id": "voice_assistant", "name": "Voice Assistant (Hub)", "connectivity": ["Wi-Fi"], "icon": "hub", "hints": ["table","shelf"] }
+      ]
+    },
+    {
+      "id": "lighting",
+      "name": "Lighting",
+      "devices": [
+        { "id": "smart_bulb", "name": "Smart Bulb (Main Light)", "connectivity": ["Wi-Fi"], "icon": "bulb", "hints": ["ceiling"] },
+        { "id": "wall_switch", "name": "Smart Wall Switch", "connectivity": ["Wi-Fi"], "icon": "switch", "hints": ["wall"] }
+      ]
+    },
+    {
+      "id": "sensors",
+      "name": "Sensors",
+      "devices": [
+        { "id": "ambient_light", "name": "Ambient Light Sensor", "connectivity": ["Wi-Fi"], "icon": "lux", "hints": ["wall"] }
+      ]
+    },
+    {
+      "id": "distractors",
+      "name": "Distractors",
+      "devices": [
+        { "id": "smart_tv", "name": "Smart TV", "connectivity": ["Wi-Fi"], "icon": "tv" },
+        { "id": "smart_vacuum", "name": "Smart Vacuum", "connectivity": ["Zigbee"], "icon": "vacuum" }
+      ]
+    }
+  ]
+}

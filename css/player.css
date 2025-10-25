@@ -1,0 +1,7 @@
+.device-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px;margin-bottom:8px;cursor:grab}
+.anchor-hit{position:absolute;width:18px;height:18px;border-radius:50%;transform:translate(-50%,-50%);background:#94a3b8;opacity:.5}
+.placed{outline:2px solid #0ea5e9;border-radius:8px;padding:2px 4px;background:#fff;position:absolute;transform:translate(-50%,-50%)}
+.anim-success{animation:flash 1.2s ease}
+.anim-fail{animation:shake .4s ease}
+@keyframes flash{0%{background:rgba(250,204,21,.1)}50%{background:rgba(250,204,21,.6)}100%{background:transparent}}
+@keyframes shake{0%{transform:translate(-50%,-50%) translateX(0)}25%{transform:translate(-50%,-50%) translateX(-6px)}50%{transform:translate(-50%,-50%) translateX(6px)}100%{transform:translate(-50%,-50%) translateX(0)}}

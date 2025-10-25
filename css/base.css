@@ -1,0 +1,15 @@
+*{box-sizing:border-box} html,body{margin:0}
+body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;background:#f8fafc;color:#0f172a}
+.bar{background:#0f172a;color:#fff;padding:10px 16px}
+.foot{font-size:12px;opacity:.8}
+.container{max-width:1000px;margin:16px auto;padding:0 12px}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin-bottom:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-block;background:#e2e8f0;border:1px solid #94a3b8;border-radius:8px;padding:8px 12px;color:#0f172a;text-decoration:none}
+.grid{display:grid;grid-template-columns:280px 1fr 320px;gap:12px;padding:12px}
+.pane{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px;min-height:60vh;overflow:auto}
+.stage-wrap{position:relative;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:8px;min-height:60vh}
+.stage{position:relative;background:#f1f5f9;border:1px dashed #cbd5e1;border-radius:10px;min-height:480px;overflow:hidden}
+.log{background:#0b1020;color:#e2e8f0;padding:8px;border-radius:8px;height:200px;overflow:auto}
+.overlay{position:absolute;inset:0;pointer-events:none}
+.aims{background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:8px;margin-bottom:8px}

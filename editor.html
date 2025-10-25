@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Editor — Smart Home Activity</title>
+  <link rel="stylesheet" href="css/base.css"/>
+  <link rel="stylesheet" href="css/editor.css"/>
+</head>
+<body>
+<header class="bar"><h1>Editor</h1></header>
+
+<main class="grid">
+  <aside class="pane">
+    <h2>1) Catalog & Allowed Devices</h2>
+    <div id="catalogPanel"><em>Loading catalog…</em></div>
+
+    <h2>2) Upload Background</h2>
+    <input type="file" id="bgUpload" accept=".png,.jpg,.jpeg,.svg"/>
+
+    <h2>3) Aims & Rules</h2>
+    <div id="aimsPanel"></div>
+    <div id="rulesPanel"></div>
+
+    <h2>Export / Import</h2>
+    <div class="row">
+      <button id="btnExport">Export scenario.json</button>
+      <input type="file" id="importJson" accept=".json"/>
+    </div>
+  </aside>
+
+  <section class="stage-wrap">
+    <div id="stage" class="stage" aria-label="Editor Stage (click to add anchors)"></div>
+    <div id="anchorsPanel" class="anchors-panel"></div>
+  </section>
+</main>
+
+<footer class="bar foot">
+  <small>Tip: Anchors store normalized coordinates (0..1) for reuse across sizes.</small>
+</footer>
+
+<script type="module" src="js/editor/editor-app.js"></script>
+</body>
+</html>
