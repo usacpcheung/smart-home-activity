@@ -2,9 +2,17 @@ import { loadCatalog } from '../core/catalog.js';
 import { evaluate } from '../core/engine.js';
 import { validateRulesStructure } from '../core/rules.js';
 import { qs, qsa, log } from '../core/utils.js';
+import { renderStage as renderStageView } from './stage-runtime.js';
 
 const logEl = qs('#log');
-const state = { scenario: null, catalog: null, placements: [], connected: false };
+const state = {
+  scenario: null,
+  catalog: null,
+  placements: [],
+  connected: false,
+  scenarioUrl: '',
+  scenarioBase: ''
+};
 
 function getScenarioUrl(){
   const u = new URL(location.href);
@@ -13,9 +21,18 @@ function getScenarioUrl(){
 
 async function init(){
   const url = getScenarioUrl();
+  state.scenarioUrl = url;
+  state.scenarioBase = scenarioDir(url);
   state.scenario = await (await fetch(url)).json();
+  if(state.scenario){
+    Object.defineProperty(state.scenario, '__baseUrl', {
+      value: state.scenarioBase,
+      enumerable: false,
+      configurable: true
+    });
+  }
   state.catalog = await loadCatalog(state.scenario.devicePool.catalogSource || 'data/catalog/devices.json');
-  renderAims(); renderDeviceList(); renderStage(); bindUI();
+  renderAims(); renderDeviceList(); renderStageView(state.scenario); bindUI();
   log(logEl, 'Scenario loaded: ' + (state.scenario?.meta?.title || 'untitled'));
 }
 
@@ -43,20 +60,11 @@ function renderDeviceList(){
   });
 }
 
-function renderStage(){
-  const stage = qs('#playerStage'); stage.innerHTML='';
-  const img = document.createElement('img');
-  img.alt = 'Scenario Background'; img.src = scenarioPath(state.scenario.stage.background);
-  img.className='bg'; img.style.width='100%'; img.style.height='auto';
-  stage.appendChild(img);
-
-  // AI TODO: when image loads, draw anchor hit areas at normalized coords (absolute positioned .anchor-hit)
-  // AI TODO: allow dropping/placing device onto an anchor; store in state.placements = [{deviceId, anchorId}]
-}
-
-function scenarioPath(rel){ 
-  const base = getScenarioUrl().split('/').slice(0,-1).join('/');
-  return `${base}/${rel}`;
+function scenarioDir(rel){
+  if(!rel) return '';
+  const parts = rel.split('/');
+  parts.pop();
+  return parts.join('/');
 }
 
 function bindUI(){
