@@ -19,15 +19,6 @@ function persistScenarioDraft(){
   }
 }
 
-function escapeAttr(value){
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
-
 function ensureElements(){
   if(stageEl) return;
   stageEl = qs('#stage');
@@ -86,12 +77,11 @@ function onAnchorsPanelChange(evt){
       break;
     }
     case 'accepts': {
-      const list = target.value.split(',').map(token=>token.trim()).filter(Boolean);
+      const checkboxes = row.querySelectorAll('input[name="accepts"]');
+      const list = Array.from(checkboxes)
+        .filter(box => box.checked)
+        .map(box => box.value);
       anchor.accepts = list;
-      break;
-    }
-    case 'isDistractor': {
-      anchor.isDistractor = Boolean(target.checked);
       break;
     }
     default:
@@ -247,8 +237,7 @@ export function addAnchor(data){
     type: data?.type || 'generic',
     x: clamp01(typeof data?.x === 'number' ? data.x : 0),
     y: clamp01(typeof data?.y === 'number' ? data.y : 0),
-    accepts: Array.isArray(data?.accepts) ? [...data.accepts] : [],
-    isDistractor: Boolean(data?.isDistractor)
+    accepts: Array.isArray(data?.accepts) ? [...data.accepts] : []
   };
 
   const anchors = stateRef.scenario.anchors;
@@ -289,6 +278,39 @@ export function renderAnchors(){
   });
 }
 
+function getAllowedDeviceOptions(){
+  if(!stateRef || !stateRef.scenario) return [];
+  const allowedIds = stateRef.scenario.devicePool?.allowedDeviceIds || [];
+  if(!allowedIds.length) return [];
+  const catalog = stateRef.catalog;
+  const lookup = new Map();
+  if(catalog?.categories){
+    catalog.categories.forEach(cat=>{
+      (cat.devices || []).forEach(device=>{
+        lookup.set(device.id, { id: device.id, name: device.name || device.id });
+      });
+    });
+  }
+  return allowedIds.map(id => lookup.get(id) || { id, name: id });
+}
+
+function createLabeledTextInput(labelText, name, value){
+  const label = document.createElement('label');
+  label.className = 'anchor-field';
+  const text = document.createElement('span');
+  text.className = 'anchor-field__label';
+  text.textContent = labelText;
+  label.appendChild(text);
+
+  const input = document.createElement('input');
+  input.name = name;
+  input.type = 'text';
+  input.value = value;
+  label.appendChild(input);
+
+  return label;
+}
+
 export function renderAnchorsPanel(){
   if(!anchorsPanel || !stateRef) return;
   const anchors = stateRef.scenario?.anchors || [];
@@ -301,22 +323,86 @@ export function renderAnchorsPanel(){
     return;
   }
 
+  const allowedOptions = getAllowedDeviceOptions();
+  const allowedIdSet = new Set(allowedOptions.map(opt => opt.id));
+  let updated = false;
+
   anchors.forEach((anchor, index)=>{
+    let accepts = Array.isArray(anchor.accepts) ? [...anchor.accepts] : [];
+    if(!Array.isArray(anchor.accepts)){
+      updated = true;
+    }
+    if(allowedIdSet.size){
+      const filtered = accepts.filter(id => allowedIdSet.has(id));
+      if(filtered.length !== accepts.length){
+        accepts = filtered;
+        updated = true;
+      } else {
+        accepts = filtered;
+      }
+    } else if(accepts.length){
+      accepts = [];
+      updated = true;
+    }
+
+    anchor.accepts = accepts;
+    const acceptsSet = new Set(accepts);
+
     const row = document.createElement('div');
     row.className = 'anchor-row';
     row.dataset.index = String(index);
 
-    row.innerHTML = `
-      <label>ID <input name="id" type="text" value="${escapeAttr(anchor.id)}"></label>
-      <label>Label <input name="label" type="text" value="${escapeAttr(anchor.label || '')}"></label>
-      <label>Type <input name="type" type="text" value="${escapeAttr(anchor.type || '')}"></label>
-      <label>Accepts <input name="accepts" type="text" value="${escapeAttr((anchor.accepts||[]).join(', '))}"></label>
-      <label class="check"><input name="isDistractor" type="checkbox" ${anchor.isDistractor ? 'checked' : ''}> Distractor</label>
-      <button type="button" class="btn-delete" data-action="delete">Delete</button>
-    `;
+    row.appendChild(createLabeledTextInput('ID', 'id', anchor.id || ''));
+    row.appendChild(createLabeledTextInput('Label', 'label', anchor.label || ''));
+    row.appendChild(createLabeledTextInput('Type', 'type', anchor.type || ''));
+
+    const acceptsFieldset = document.createElement('fieldset');
+    acceptsFieldset.className = 'anchor-accepts';
+
+    const legend = document.createElement('legend');
+    legend.textContent = 'Allowed Devices';
+    acceptsFieldset.appendChild(legend);
+
+    if(!allowedOptions.length){
+      const emptyMessage = document.createElement('p');
+      emptyMessage.className = 'anchor-accepts__empty';
+      emptyMessage.textContent = 'Select allowed devices to configure anchor access.';
+      acceptsFieldset.appendChild(emptyMessage);
+    } else {
+      allowedOptions.forEach(device => {
+        const optionLabel = document.createElement('label');
+        optionLabel.className = 'anchor-accepts__option';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.name = 'accepts';
+        checkbox.value = device.id;
+        checkbox.checked = acceptsSet.has(device.id);
+        optionLabel.appendChild(checkbox);
+
+        const optionName = document.createElement('span');
+        optionName.textContent = device.name;
+        optionLabel.appendChild(optionName);
+
+        acceptsFieldset.appendChild(optionLabel);
+      });
+    }
+
+    row.appendChild(acceptsFieldset);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'btn-delete';
+    deleteBtn.dataset.action = 'delete';
+    deleteBtn.textContent = 'Delete';
+    row.appendChild(deleteBtn);
 
     anchorsPanel.appendChild(row);
   });
+
+  if(updated){
+    persistScenarioDraft();
+  }
 }
 
 export function initStage(state, callbacks = {}){

@@ -20,14 +20,15 @@
       "name": "Climate Control",
       "devices": [
         { "id": "smart_thermostat", "name": "Smart Thermostat", "connectivity": ["Wi-Fi"], "icon": "thermostat", "hints": ["wall"] },
-        { "id": "smart_fan", "name": "Smart Ceiling Fan", "connectivity": ["Wi-Fi"], "icon": "fan", "hints": ["ceiling"] }
+        { "id": "smart_fan", "name": "Smart Ceiling Fan", "connectivity": ["Wi-Fi"], "icon": "fan", "hints": ["ceiling"] },
+        { "id": "smart_air_conditioner", "name": "Smart Air Conditioner", "connectivity": ["Wi-Fi"], "icon": "ac", "hints": ["window", "wall"] }
       ]
     },
     {
       "id": "security",
       "name": "Security & Access",
       "devices": [
-        { "id": "door_lock", "name": "Smart Door Lock", "connectivity": ["Z-Wave"], "icon": "lock", "hints": ["door"] },
+        { "id": "door_lock", "name": "Smart Door Lock", "connectivity": ["Bluetooth"], "icon": "lock", "hints": ["door"] },
         { "id": "security_camera", "name": "Indoor Security Camera", "connectivity": ["Wi-Fi"], "icon": "camera", "hints": ["shelf", "wall"] }
       ]
     },
@@ -54,7 +55,7 @@
       "devices": [
         { "id": "smart_fridge", "name": "Smart Refrigerator", "connectivity": ["Wi-Fi"], "icon": "fridge", "hints": ["kitchen"] },
         { "id": "smart_washer", "name": "Smart Washer", "connectivity": ["Wi-Fi"], "icon": "washer", "hints": ["laundry"] },
-        { "id": "smart_vacuum", "name": "Smart Vacuum", "connectivity": ["Zigbee"], "icon": "vacuum", "hints": ["floor"] }
+        { "id": "smart_vacuum", "name": "Smart Vacuum", "connectivity": ["Wi-Fi"], "icon": "vacuum", "hints": ["floor"] }
       ]
     },
     {
@@ -62,8 +63,8 @@
       "name": "Sensors",
       "devices": [
         { "id": "ambient_light", "name": "Ambient Light Sensor", "connectivity": ["Wi-Fi"], "icon": "lux", "hints": ["wall"] },
-        { "id": "motion_sensor", "name": "Motion Sensor", "connectivity": ["Zigbee"], "icon": "motion", "hints": ["corner", "wall"] },
-        { "id": "door_sensor", "name": "Door / Window Sensor", "connectivity": ["Zigbee"], "icon": "contact", "hints": ["door", "window"] }
+        { "id": "motion_sensor", "name": "Motion Sensor", "connectivity": ["Wi-Fi"], "icon": "motion", "hints": ["corner", "wall"] },
+        { "id": "door_sensor", "name": "Door / Window Sensor", "connectivity": ["Bluetooth"], "icon": "contact", "hints": ["door", "window"] }
       ]
     }
   ]
