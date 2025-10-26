@@ -11,6 +11,13 @@ let imageNaturalHeight = 0;
 let pendingFileName = null;
 let activeDrag = null;
 let suppressStageClick = false;
+let persistDraftCallback = null;
+
+function persistScenarioDraft(){
+  if(typeof persistDraftCallback === 'function'){
+    persistDraftCallback();
+  }
+}
 
 function escapeAttr(value){
   return String(value ?? '')
@@ -93,6 +100,7 @@ function onAnchorsPanelChange(evt){
 
   renderAnchors();
   renderAnchorsPanel();
+  persistScenarioDraft();
 }
 
 function onAnchorsPanelClick(evt){
@@ -111,6 +119,7 @@ function onAnchorsPanelClick(evt){
   anchors.splice(index, 1);
   renderAnchors();
   renderAnchorsPanel();
+  persistScenarioDraft();
 }
 
 function handleFileChange(evt){
@@ -137,6 +146,7 @@ function applyBackground(src, name=''){
       stateRef.scenario.stage.backgroundName = null;
     }
   }
+  persistScenarioDraft();
   if(!src){
     imageNaturalWidth = 0;
     imageNaturalHeight = 0;
@@ -153,6 +163,7 @@ function updateImageMetrics(){
   if(stateRef && imageNaturalWidth && imageNaturalHeight){
     stateRef.scenario.stage.logicalWidth = imageNaturalWidth;
     stateRef.scenario.stage.logicalHeight = imageNaturalHeight;
+    persistScenarioDraft();
   }
   layoutStage();
 }
@@ -249,6 +260,7 @@ export function addAnchor(data){
   }
   renderAnchors();
   renderAnchorsPanel();
+  persistScenarioDraft();
   return anchor;
 }
 
@@ -307,8 +319,11 @@ export function renderAnchorsPanel(){
   });
 }
 
-export function initStage(state){
+export function initStage(state, callbacks = {}){
   stateRef = state;
+  persistDraftCallback = typeof callbacks.persistScenarioDraft === 'function'
+    ? callbacks.persistScenarioDraft
+    : null;
   ensureElements();
   if(!stageEl) return;
   if(bgInput){
@@ -344,6 +359,7 @@ export function teardownStage(){
   if(stageEl){
     stageEl.removeEventListener('click', onStageClick);
   }
+  persistDraftCallback = null;
 }
 
 function clamp01(value){
@@ -403,6 +419,7 @@ function onAnchorPointerMove(evt){
     dot.style.left = `${layout.left + x * layout.width}px`;
     dot.style.top = `${layout.top + y * layout.height}px`;
   }
+  persistScenarioDraft();
 }
 
 function onAnchorPointerUp(evt){

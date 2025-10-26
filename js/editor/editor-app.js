@@ -76,7 +76,7 @@ async function init(){
   state.catalog = await loadCatalog();
   renderCatalog();
   bindExportImport();
-  initStage(state);
+  initStage(state, { persistScenarioDraft });
   // AI TODO:
   // 1) implement image-stage loader (bgUpload → draw in #stage; store stage.background as filename)
   // 2) click-to-add anchors in stage (store normalized coords)
