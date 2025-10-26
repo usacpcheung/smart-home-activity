@@ -2,12 +2,22 @@ import { qs } from '../core/utils.js';
 
 let stageEl = null;
 let anchorLayer = null;
+let anchorsPanel = null;
 let bgInput = null;
 let imgEl = null;
 let stateRef = null;
 let imageNaturalWidth = 0;
 let imageNaturalHeight = 0;
 let pendingFileName = null;
+
+function escapeAttr(value){
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
 
 function ensureElements(){
   if(stageEl) return;
@@ -23,6 +33,82 @@ function ensureElements(){
   anchorLayer = document.createElement('div');
   anchorLayer.className = 'anchor-layer';
   stageEl.appendChild(anchorLayer);
+
+  anchorsPanel = qs('#anchorsPanel');
+  if(anchorsPanel){
+    anchorsPanel.addEventListener('change', onAnchorsPanelChange);
+    anchorsPanel.addEventListener('click', onAnchorsPanelClick);
+  }
+}
+
+function onAnchorsPanelChange(evt){
+  const target = evt.target;
+  if(!target || typeof target.closest !== 'function') return;
+  const row = target.closest('.anchor-row');
+  if(!row) return;
+  const index = Number(row.dataset.index);
+  if(Number.isNaN(index)) return;
+
+  const anchors = stateRef?.scenario?.anchors;
+  if(!anchors || !anchors[index]) return;
+  const anchor = anchors[index];
+
+  switch(target.name){
+    case 'id': {
+      const value = target.value.trim();
+      if(!value){
+        target.value = anchor.id;
+        return;
+      }
+      const exists = anchors.some((a, i)=>i !== index && a.id === value);
+      if(exists){
+        target.value = anchor.id;
+        return;
+      }
+      anchor.id = value;
+      break;
+    }
+    case 'label': {
+      anchor.label = target.value.trim();
+      break;
+    }
+    case 'type': {
+      anchor.type = target.value.trim();
+      break;
+    }
+    case 'accepts': {
+      const list = target.value.split(',').map(token=>token.trim()).filter(Boolean);
+      anchor.accepts = list;
+      break;
+    }
+    case 'isDistractor': {
+      anchor.isDistractor = Boolean(target.checked);
+      break;
+    }
+    default:
+      return;
+  }
+
+  renderAnchors();
+  renderAnchorsPanel();
+}
+
+function onAnchorsPanelClick(evt){
+  const target = evt.target;
+  if(!target || typeof target.closest !== 'function') return;
+  const action = target.dataset ? target.dataset.action : null;
+  if(action !== 'delete') return;
+  const row = target.closest('.anchor-row');
+  if(!row) return;
+  const index = Number(row.dataset.index);
+  if(Number.isNaN(index)) return;
+
+  const anchors = stateRef?.scenario?.anchors;
+  if(!anchors || !anchors[index]) return;
+
+  anchors.splice(index, 1);
+  renderAnchors();
+  renderAnchorsPanel();
 }
 
 function handleFileChange(evt){
@@ -156,6 +242,7 @@ export function addAnchor(data){
     anchors.push(anchor);
   }
   renderAnchors();
+  renderAnchorsPanel();
   return anchor;
 }
 
@@ -181,6 +268,36 @@ export function renderAnchors(){
   });
 }
 
+export function renderAnchorsPanel(){
+  if(!anchorsPanel || !stateRef) return;
+  const anchors = stateRef.scenario?.anchors || [];
+  anchorsPanel.innerHTML = '';
+
+  if(!anchors.length){
+    const empty = document.createElement('p');
+    empty.textContent = 'No anchors yet. Click the stage to add one.';
+    anchorsPanel.appendChild(empty);
+    return;
+  }
+
+  anchors.forEach((anchor, index)=>{
+    const row = document.createElement('div');
+    row.className = 'anchor-row';
+    row.dataset.index = String(index);
+
+    row.innerHTML = `
+      <label>ID <input name="id" type="text" value="${escapeAttr(anchor.id)}"></label>
+      <label>Label <input name="label" type="text" value="${escapeAttr(anchor.label || '')}"></label>
+      <label>Type <input name="type" type="text" value="${escapeAttr(anchor.type || '')}"></label>
+      <label>Accepts <input name="accepts" type="text" value="${escapeAttr((anchor.accepts||[]).join(', '))}"></label>
+      <label class="check"><input name="isDistractor" type="checkbox" ${anchor.isDistractor ? 'checked' : ''}> Distractor</label>
+      <button type="button" class="btn-delete" data-action="delete">Delete</button>
+    `;
+
+    anchorsPanel.appendChild(row);
+  });
+}
+
 export function initStage(state){
   stateRef = state;
   ensureElements();
@@ -202,6 +319,7 @@ export function initStage(state){
     layoutStage();
   }
   renderAnchors();
+  renderAnchorsPanel();
 }
 
 export function teardownStage(){
