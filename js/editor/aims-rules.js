@@ -632,9 +632,9 @@ function onAimsPanelChange(evt){
     return;
   }
   const oldId = current.id;
-  current.id = newId;
   const checks = ensureRulesStructure();
   const entry = checks.find(chk => chk.aimId === oldId);
+  current.id = newId;
   if(entry){
     entry.aimId = newId;
   }
