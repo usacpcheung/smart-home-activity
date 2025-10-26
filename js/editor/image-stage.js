@@ -1,4 +1,5 @@
 import { qs } from '../core/utils.js';
+import { renderRulesEditor } from './aims-rules.js';
 
 let stageEl = null;
 let anchorLayer = null;
@@ -90,6 +91,7 @@ function onAnchorsPanelChange(evt){
 
   renderAnchors();
   renderAnchorsPanel();
+  renderRulesEditor();
   persistScenarioDraft();
 }
 
@@ -109,6 +111,7 @@ function onAnchorsPanelClick(evt){
   anchors.splice(index, 1);
   renderAnchors();
   renderAnchorsPanel();
+  renderRulesEditor();
   persistScenarioDraft();
 }
 

@@ -154,3 +154,170 @@
   color:#64748b;
   margin:0;
 }
+
+.aim-row{
+  border:1px solid #cbd5f5;
+  border-radius:8px;
+  padding:12px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-bottom:12px;
+  background:#f8fafc;
+}
+
+.aim-row__fields{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.aim-field{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  font-size:13px;
+  color:#334155;
+}
+
+.aim-field--wide textarea{
+  resize:vertical;
+}
+
+.aim-field__label{
+  font-weight:600;
+  color:#0f172a;
+}
+
+.aim-field input[type="text"],
+.aim-field textarea{
+  padding:6px 8px;
+  border:1px solid #cbd5f5;
+  border-radius:4px;
+  font-size:13px;
+  font-family:inherit;
+}
+
+.aim-row__actions{
+  display:flex;
+  justify-content:flex-end;
+}
+
+.aim-row__actions button,
+.aims-add,
+.rules-section > button{
+  align-self:flex-start;
+  padding:6px 10px;
+  border-radius:4px;
+  border:1px solid #2563eb;
+  background:#2563eb;
+  color:#fff;
+  font-size:13px;
+  cursor:pointer;
+}
+
+.aim-row__actions button:hover,
+.aims-add:hover,
+.rules-section > button:hover{
+  background:#1d4ed8;
+  border-color:#1d4ed8;
+}
+
+.aims-add{
+  margin-top:8px;
+}
+
+.aims-empty,
+.rules-empty{
+  font-size:13px;
+  color:#64748b;
+  margin:8px 0;
+}
+
+.rules-section{
+  border:1px solid #cbd5f5;
+  border-radius:8px;
+  padding:12px;
+  margin-bottom:14px;
+  background:#f8fafc;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.rules-section__header{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  color:#0f172a;
+}
+
+.rules-section__header h3{
+  font-size:16px;
+  margin:0;
+}
+
+.rules-section__header small{
+  font-size:12px;
+  color:#475569;
+}
+
+.rules-section__list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.rule-row{
+  display:flex;
+  align-items:flex-end;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.rule-start{
+  font-size:13px;
+  font-weight:600;
+  color:#0f172a;
+}
+
+.rule-field{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  font-size:13px;
+  color:#334155;
+}
+
+.rule-field__label{
+  font-weight:600;
+  color:#0f172a;
+}
+
+.rule-field select{
+  padding:6px 8px;
+  border:1px solid #cbd5f5;
+  border-radius:4px;
+  font-size:13px;
+  min-width:140px;
+}
+
+.rule-field--operator select{
+  min-width:80px;
+}
+
+.rules-section button[data-action="delete-rule"]{
+  border:1px solid #ef4444;
+  background:#ef4444;
+  color:#fff;
+  padding:6px 10px;
+}
+
+.rules-section button[data-action="delete-rule"]:hover{
+  background:#dc2626;
+  border-color:#dc2626;
+}
+
+.rules-empty--global{
+  margin-top:4px;
+}
