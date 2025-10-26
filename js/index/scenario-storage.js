@@ -3,6 +3,9 @@ const MAX_ENTRIES = 3;
 
 const uploadInput = document.getElementById('scenarioUpload');
 const feedbackEl = document.getElementById('scenarioUploadFeedback');
+const tableEl = document.getElementById('storedScenariosTable');
+const tableBodyEl = document.getElementById('storedScenariosBody');
+const emptyStateEl = document.getElementById('storedScenariosEmpty');
 
 const storageAvailable = (() => {
   try {
@@ -15,6 +18,39 @@ const storageAvailable = (() => {
     return false;
   }
 })();
+
+if (tableEl) {
+  tableEl.addEventListener('click', (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+    const action = target.dataset.action;
+    if (!action) {
+      return;
+    }
+
+    const row = target.closest('tr[data-entry-id]');
+    const entryId = row?.dataset.entryId;
+    if (!entryId) {
+      return;
+    }
+
+    if (action === 'play') {
+      handlePlay(entryId);
+    } else if (action === 'clear') {
+      handleClear(entryId);
+    }
+  });
+}
+
+renderStoredScenarios();
+
+window.addEventListener('storage', (event) => {
+  if (event.key === STORAGE_KEY) {
+    renderStoredScenarios();
+  }
+});
 
 if (uploadInput) {
   uploadInput.addEventListener('change', async (event) => {
@@ -35,7 +71,8 @@ if (uploadInput) {
       } else if (!storageAvailable) {
         setFeedback('Local storage is not available. Scenario could not be saved.', 'error');
       } else {
-        const { slotIndex } = storeScenario(scenario, file.name);
+        const { slotIndex, entries } = storeScenario(scenario, file.name);
+        renderStoredScenarios(entries);
         const noteSuffix = notes.length > 0 ? ` ${notes.join(' ')}` : '';
         setFeedback(`Saved "${scenario.meta.title}" to slot ${slotIndex + 1}.` + noteSuffix, 'success');
       }
@@ -53,12 +90,106 @@ if (uploadInput) {
   });
 }
 
+function handlePlay(entryId) {
+  if (!storageAvailable) {
+    setFeedback('Local storage is not available. Unable to play stored scenarios.', 'error');
+    return;
+  }
+
+  const entry = getStoredScenario(entryId);
+  if (!entry) {
+    setFeedback('Selected scenario is no longer available. Please upload it again.', 'error');
+    renderStoredScenarios();
+    return;
+  }
+
+  window.location.href = `player.html?storedSlot=${encodeURIComponent(entry.id)}`;
+}
+
+function handleClear(entryId) {
+  if (!storageAvailable) {
+    setFeedback('Local storage is not available. Nothing to clear.', 'error');
+    return;
+  }
+
+  const entry = getStoredScenario(entryId);
+  if (!entry) {
+    setFeedback('Scenario slot is already empty.', 'info');
+    renderStoredScenarios();
+    return;
+  }
+
+  const entries = removeScenario(entryId);
+  renderStoredScenarios(entries);
+  const title = entry.title || 'Untitled scenario';
+  setFeedback(`Cleared "${title}" from stored scenarios.`, 'info');
+}
+
+function renderStoredScenarios(entriesOverride) {
+  if (!tableEl || !tableBodyEl || !emptyStateEl) {
+    return;
+  }
+
+  if (!storageAvailable) {
+    tableEl.hidden = true;
+    emptyStateEl.hidden = false;
+    emptyStateEl.textContent = 'Local storage is not available. Uploaded scenarios cannot be stored.';
+    return;
+  }
+
+  const entries = Array.isArray(entriesOverride) ? entriesOverride : loadStoredScenarios();
+  tableBodyEl.innerHTML = '';
+
+  if (!entries.length) {
+    tableEl.hidden = true;
+    emptyStateEl.hidden = false;
+    emptyStateEl.textContent = 'No uploaded scenarios yet.';
+    return;
+  }
+
+  tableEl.hidden = false;
+  emptyStateEl.hidden = true;
+
+  entries.forEach((entry, index) => {
+    const row = document.createElement('tr');
+    row.dataset.entryId = entry.id;
+
+    row.appendChild(createCell(String(index + 1)));
+    row.appendChild(createCell(entry.title || 'Untitled'));
+    row.appendChild(createCell(entry.filename || '—'));
+    row.appendChild(createCell(formatUploadedAt(entry.uploadedAt)));
+
+    const actionsCell = document.createElement('td');
+    actionsCell.className = 'stored-scenarios-actions';
+    actionsCell.appendChild(createActionButton('Play', 'play'));
+    actionsCell.appendChild(createActionButton('Clear', 'clear'));
+    row.appendChild(actionsCell);
+
+    tableBodyEl.appendChild(row);
+  });
+}
+
 function setFeedback(message, state = 'info') {
   if (!feedbackEl) {
     return;
   }
   feedbackEl.textContent = message;
   feedbackEl.dataset.state = state;
+}
+
+function createCell(text) {
+  const cell = document.createElement('td');
+  cell.textContent = text;
+  return cell;
+}
+
+function createActionButton(label, action) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'btn';
+  button.dataset.action = action;
+  button.textContent = label;
+  return button;
 }
 
 function readFileAsText(file) {
@@ -167,7 +298,7 @@ function storeScenario(scenario, filename) {
 
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
   const slotIndex = entries.findIndex((item) => item.id === entry.id);
-  return { slotIndex };
+  return { slotIndex, entries };
 }
 
 function loadStoredScenarios() {
@@ -189,4 +320,30 @@ function createId() {
     return window.crypto.randomUUID();
   }
   return `scenario-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function getStoredScenario(entryId) {
+  return loadStoredScenarios().find((item) => item.id === entryId) || null;
+}
+
+function removeScenario(entryId) {
+  const entries = loadStoredScenarios().filter((item) => item.id !== entryId);
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  return entries;
+}
+
+function formatUploadedAt(value) {
+  if (!value) {
+    return '—';
+  }
+
+  try {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return '—';
+    }
+    return date.toLocaleString();
+  } catch (error) {
+    return '—';
+  }
 }

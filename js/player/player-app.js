@@ -4,6 +4,9 @@ import { validateRulesStructure } from '../core/rules.js';
 import { qs, qsa, log } from '../core/utils.js';
 import { renderStage as renderStageView } from './stage-runtime.js';
 
+const STORED_SCENARIOS_KEY = 'uploadedScenarios';
+const DEFAULT_SCENARIO_URL = 'scenarios/case01/scenario.json';
+
 const logEl = qs('#log');
 const state = {
   scenario: null,
@@ -14,24 +17,47 @@ const state = {
   scenarioBase: ''
 };
 
-function getScenarioUrl(){
-  const u = new URL(location.href);
-  return u.searchParams.get('scenario') || 'scenarios/case01/scenario.json';
-}
-
 async function init(){
-  const url = getScenarioUrl();
-  state.scenarioUrl = url;
-  state.scenarioBase = scenarioDir(url);
-  state.scenario = await (await fetch(url)).json();
-  if(state.scenario){
+  const params = new URL(location.href).searchParams;
+  const storedSlotId = params.get('storedSlot');
+  let scenarioInfo = null;
+
+  if (storedSlotId) {
+    scenarioInfo = loadScenarioFromStorage(storedSlotId);
+    if (!scenarioInfo) {
+      log(logEl, 'Stored scenario not available. Loading default sample scenario.');
+    }
+  }
+
+  if (!scenarioInfo) {
+    const requestedUrl = params.get('scenario') || DEFAULT_SCENARIO_URL;
+    scenarioInfo = await loadScenarioFromUrl(requestedUrl);
+
+    if (!scenarioInfo && requestedUrl !== DEFAULT_SCENARIO_URL) {
+      log(logEl, 'Falling back to default sample scenario.');
+      scenarioInfo = await loadScenarioFromUrl(DEFAULT_SCENARIO_URL);
+    }
+  }
+
+  if (!scenarioInfo) {
+    log(logEl, 'Unable to load a scenario.');
+    return;
+  }
+
+  state.scenario = scenarioInfo.scenario;
+  state.scenarioUrl = scenarioInfo.url;
+  state.scenarioBase = scenarioInfo.baseUrl;
+
+  if (state.scenario) {
     Object.defineProperty(state.scenario, '__baseUrl', {
       value: state.scenarioBase,
       enumerable: false,
       configurable: true
     });
   }
-  state.catalog = await loadCatalog(state.scenario.devicePool.catalogSource || 'data/catalog/devices.json');
+
+  const catalogSource = state.scenario?.devicePool?.catalogSource || 'data/catalog/devices.json';
+  state.catalog = await loadCatalog(catalogSource);
   renderAims(); renderDeviceList(); renderStageView(state.scenario); bindUI();
   log(logEl, 'Scenario loaded: ' + (state.scenario?.meta?.title || 'untitled'));
 }
@@ -65,6 +91,77 @@ function scenarioDir(rel){
   const parts = rel.split('/');
   parts.pop();
   return parts.join('/');
+}
+
+function loadScenarioFromStorage(slotId) {
+  const entry = getStoredScenarioEntry(slotId);
+  if (!entry) {
+    return null;
+  }
+
+  if (typeof entry.scenario !== 'object' || entry.scenario === null) {
+    console.warn('Stored scenario entry missing scenario data', entry);
+    return null;
+  }
+
+  try {
+    const scenario = cloneScenarioData(entry.scenario);
+    return {
+      scenario,
+      url: `stored:${slotId}`,
+      baseUrl: `stored:${slotId}/`
+    };
+  } catch (error) {
+    console.warn('Failed to load stored scenario', error);
+    return null;
+  }
+}
+
+async function loadScenarioFromUrl(url) {
+  try {
+    const scenario = await fetchScenarioData(url);
+    return {
+      scenario,
+      url,
+      baseUrl: scenarioDir(url)
+    };
+  } catch (error) {
+    log(logEl, `Failed to load scenario from ${url}: ${error.message}`);
+    console.error('Failed to load scenario from URL', error);
+    return null;
+  }
+}
+
+async function fetchScenarioData(url) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
+function getStoredScenarioEntry(slotId) {
+  try {
+    const raw = window.localStorage.getItem(STORED_SCENARIOS_KEY);
+    if (!raw) {
+      return null;
+    }
+    const entries = JSON.parse(raw);
+    if (!Array.isArray(entries)) {
+      return null;
+    }
+    return entries.find((item) => item.id === slotId) || null;
+  } catch (error) {
+    console.warn('Failed to read stored scenarios', error);
+    return null;
+  }
+}
+
+function cloneScenarioData(data) {
+  if (typeof structuredClone === 'function') {
+    return structuredClone(data);
+  }
+  return JSON.parse(JSON.stringify(data));
 }
 
 function bindUI(){
