@@ -12,7 +12,8 @@
       "name": "Lighting",
       "devices": [
         { "id": "smart_bulb", "name": "Smart Bulb (Main Light)", "connectivity": ["Wi-Fi"], "icon": "bulb", "hints": ["ceiling"] },
-        { "id": "wall_switch", "name": "Smart Wall Switch", "connectivity": ["Wi-Fi"], "icon": "switch", "hints": ["wall"] }
+        { "id": "wall_switch", "name": "Smart Wall Switch", "connectivity": ["Wi-Fi"], "icon": "switch", "hints": ["wall"] },
+        { "id": "smart_curtain", "name": "Smart Curtain", "connectivity": ["Wi-Fi"], "icon": "curtain", "hints": ["window"] }
       ]
     },
     {
@@ -28,7 +29,7 @@
       "id": "security",
       "name": "Security & Access",
       "devices": [
-        { "id": "door_lock", "name": "Smart Door Lock", "connectivity": ["Bluetooth"], "icon": "lock", "hints": ["door"] },
+        { "id": "door_lock", "name": "Smart Door Lock", "connectivity": ["Wi-Fi"], "icon": "lock", "hints": ["door"] },
         { "id": "security_camera", "name": "Indoor Security Camera", "connectivity": ["Wi-Fi"], "icon": "camera", "hints": ["shelf", "wall"] }
       ]
     },
