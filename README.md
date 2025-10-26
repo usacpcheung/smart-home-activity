@@ -26,6 +26,28 @@ All files are same-origin; `fetch()` local JSON works.
 - **Rules per "aim"**. Each aim evaluated separately on submit; success/fail animations over the stage.
 - **Connect** button must be pressed before submit (configurable in scenario).
 
+## Rule Expressions
+- Rule checks now store a nested expression tree instead of a flat list. Each expression is a top-level group node:
+  ```json
+  {
+    "type": "group",
+    "operator": "and", // "and" | "or"
+    "children": [
+      { "type": "clause", "deviceId": "voice_assistant", "anchorId": "a1" },
+      {
+        "type": "group",
+        "operator": "or",
+        "children": [
+          { "type": "clause", "deviceId": "smart_bulb", "anchorId": "a2" },
+          { "type": "clause", "deviceId": "smart_strip", "anchorId": "a2" }
+        ]
+      }
+    ]
+  }
+  ```
+- Existing scenarios with flat `expression` arrays (or `requiredPlacements`) are migrated automatically when opened in the editor, and the engine still evaluates the legacy format for backwards compatibility.
+- Nested groups correspond to parentheses in the editor UI: you can add clauses, add AND/OR subgroups, and wrap selected sibling clauses into a subgroup to build more complex logic.
+
 ## AI TODO Guidance
 - Implement Editor stage: background load, zoom/pan optional, click to add anchors → list anchors → edit properties (label, type, accepts[], isDistractor).
 - Implement device catalog UI: checkboxes by category → produces `allowedDeviceIds` + `distractorIds`.

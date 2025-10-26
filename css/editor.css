@@ -268,11 +268,57 @@
   gap:8px;
 }
 
+.rule-group{
+  border:1px solid #cbd5f5;
+  background:#f8fafc;
+  border-radius:8px;
+  padding:12px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.rule-group:not(.rule-group--root){
+  margin-left:16px;
+}
+
+.rule-group__header{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.rule-group__paren{
+  font-size:18px;
+  font-weight:700;
+  color:#1e293b;
+}
+
+.rule-group__children{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding-left:8px;
+}
+
+.rule-group__controls{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
 .rule-row{
   display:flex;
   align-items:flex-end;
   gap:8px;
   flex-wrap:wrap;
+}
+
+.rule-row--clause{
+  padding:8px;
+  background:#fff;
+  border:1px solid #e2e8f0;
+  border-radius:6px;
 }
 
 .rule-start{
@@ -294,6 +340,12 @@
   color:#0f172a;
 }
 
+.rule-field--select{
+  flex-direction:row;
+  align-items:center;
+  gap:6px;
+}
+
 .rule-field select{
   padding:6px 8px;
   border:1px solid #cbd5f5;
@@ -306,16 +358,43 @@
   min-width:80px;
 }
 
-.rules-section button[data-action="delete-rule"]{
+.rules-section button[data-action="delete-clause"],
+.rules-section button[data-action="delete-group"]{
   border:1px solid #ef4444;
   background:#ef4444;
   color:#fff;
   padding:6px 10px;
 }
 
-.rules-section button[data-action="delete-rule"]:hover{
+.rules-section button[data-action="delete-clause"]:hover,
+.rules-section button[data-action="delete-group"]:hover{
   background:#dc2626;
   border-color:#dc2626;
+}
+
+.rules-section button[data-action="add-clause"],
+.rules-section button[data-action="add-group"],
+.rules-section button[data-action="group-selected"]{
+  border:1px solid #0ea5e9;
+  background:#0ea5e9;
+  color:#fff;
+  padding:6px 12px;
+  border-radius:4px;
+}
+
+.rules-section button[data-action="add-clause"]:hover,
+.rules-section button[data-action="add-group"]:hover,
+.rules-section button[data-action="group-selected"]:hover{
+  background:#0284c7;
+  border-color:#0284c7;
+}
+
+.rules-section button[data-action="group-selected"]:disabled,
+.rules-section button[data-action="delete-group"]:disabled{
+  background:#cbd5f5;
+  border-color:#cbd5f5;
+  color:#64748b;
+  cursor:not-allowed;
 }
 
 .rules-empty--global{
