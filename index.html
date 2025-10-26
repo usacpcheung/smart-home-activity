@@ -25,11 +25,18 @@
   <section class="card">
     <h3>Scenarios</h3>
     <p>Upload your scenario folder (e.g. <code>/scenarios/mycase</code>) containing <code>scenario.json</code> and its background image.</p>
+    <form class="scenario-upload" id="scenarioUploadForm">
+      <label for="scenarioUpload">Scenario JSON file</label>
+      <input type="file" id="scenarioUpload" name="scenarioUpload" accept="application/json"/>
+      <p class="hint">Select a <code>.json</code> file that was exported from the editor.</p>
+      <div class="upload-feedback" id="scenarioUploadFeedback" role="status" aria-live="polite"></div>
+    </form>
   </section>
 </main>
 
 <footer class="bar foot">
   <small>Static, front-end only. Apache / GitHub Pages friendly.</small>
 </footer>
+<script type="module" src="js/index/scenario-storage.js"></script>
 </body>
 </html>
