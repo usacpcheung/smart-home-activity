@@ -47,3 +47,48 @@
   border-radius:4px;
   white-space:nowrap;
 }
+
+.catalog-category{
+  border-bottom:1px solid #e2e8f0;
+  padding:8px 0;
+}
+
+.catalog-category:last-of-type{
+  border-bottom:none;
+}
+
+.catalog-category__header{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:16px;
+  font-weight:600;
+  color:#0f172a;
+  margin-bottom:6px;
+}
+
+.catalog-category__header input[type="checkbox"]{
+  transform:scale(1.1);
+}
+
+.catalog-device{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:4px 0;
+  margin-left:24px;
+  font-size:14px;
+}
+
+.catalog-device__allow,
+.catalog-device__distractor{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  color:#1f2937;
+}
+
+.catalog-device__allow small{
+  color:#6b7280;
+  font-weight:400;
+}

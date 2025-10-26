@@ -16,18 +16,54 @@
       ]
     },
     {
-      "id": "sensors",
-      "name": "Sensors",
+      "id": "climate",
+      "name": "Climate Control",
       "devices": [
-        { "id": "ambient_light", "name": "Ambient Light Sensor", "connectivity": ["Wi-Fi"], "icon": "lux", "hints": ["wall"] }
+        { "id": "smart_thermostat", "name": "Smart Thermostat", "connectivity": ["Wi-Fi"], "icon": "thermostat", "hints": ["wall"] },
+        { "id": "smart_fan", "name": "Smart Ceiling Fan", "connectivity": ["Wi-Fi"], "icon": "fan", "hints": ["ceiling"] }
       ]
     },
     {
-      "id": "distractors",
-      "name": "Distractors",
+      "id": "security",
+      "name": "Security & Access",
       "devices": [
-        { "id": "smart_tv", "name": "Smart TV", "connectivity": ["Wi-Fi"], "icon": "tv" },
-        { "id": "smart_vacuum", "name": "Smart Vacuum", "connectivity": ["Zigbee"], "icon": "vacuum" }
+        { "id": "door_lock", "name": "Smart Door Lock", "connectivity": ["Z-Wave"], "icon": "lock", "hints": ["door"] },
+        { "id": "security_camera", "name": "Indoor Security Camera", "connectivity": ["Wi-Fi"], "icon": "camera", "hints": ["shelf", "wall"] }
+      ]
+    },
+    {
+      "id": "energy",
+      "name": "Energy & Power",
+      "devices": [
+        { "id": "smart_plug", "name": "Smart Plug", "connectivity": ["Wi-Fi"], "icon": "plug", "hints": ["outlet"] },
+        { "id": "power_strip", "name": "Smart Power Strip", "connectivity": ["Wi-Fi"], "icon": "power", "hints": ["desk"] }
+      ]
+    },
+    {
+      "id": "entertainment",
+      "name": "Entertainment",
+      "devices": [
+        { "id": "smart_tv", "name": "Smart TV", "connectivity": ["Wi-Fi"], "icon": "tv", "hints": ["tv_stand", "wall"] },
+        { "id": "smart_speaker", "name": "Multi-room Speaker", "connectivity": ["Wi-Fi"], "icon": "speaker", "hints": ["shelf"] },
+        { "id": "streaming_box", "name": "Streaming Media Player", "connectivity": ["Wi-Fi"], "icon": "media", "hints": ["tv_stand"] }
+      ]
+    },
+    {
+      "id": "appliances",
+      "name": "Smart Appliances",
+      "devices": [
+        { "id": "smart_fridge", "name": "Smart Refrigerator", "connectivity": ["Wi-Fi"], "icon": "fridge", "hints": ["kitchen"] },
+        { "id": "smart_washer", "name": "Smart Washer", "connectivity": ["Wi-Fi"], "icon": "washer", "hints": ["laundry"] },
+        { "id": "smart_vacuum", "name": "Smart Vacuum", "connectivity": ["Zigbee"], "icon": "vacuum", "hints": ["floor"] }
+      ]
+    },
+    {
+      "id": "sensors",
+      "name": "Sensors",
+      "devices": [
+        { "id": "ambient_light", "name": "Ambient Light Sensor", "connectivity": ["Wi-Fi"], "icon": "lux", "hints": ["wall"] },
+        { "id": "motion_sensor", "name": "Motion Sensor", "connectivity": ["Zigbee"], "icon": "motion", "hints": ["corner", "wall"] },
+        { "id": "door_sensor", "name": "Door / Window Sensor", "connectivity": ["Zigbee"], "icon": "contact", "hints": ["door", "window"] }
       ]
     }
   ]
