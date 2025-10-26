@@ -1,3 +1,5 @@
+import { MAX_RULE_GROUP_DEPTH } from './rules.js';
+
 // Shared runtime: coordinate transforms, placement model, evaluation hooks
 export function normToPx(x, y, w, h) { return { x: x * w, y: y * h }; }
 
@@ -33,7 +35,7 @@ function evaluatePlacements(check, placements) {
   return true;
 }
 
-function evaluateExpressionNode(node, placements) {
+function evaluateExpressionNode(node, placements, depth = 0, path = 'root') {
   if (!node) return true;
 
   if (Array.isArray(node)) {
@@ -48,21 +50,29 @@ function evaluateExpressionNode(node, placements) {
   }
 
   if (node.type === 'group') {
+    if (depth > MAX_RULE_GROUP_DEPTH) {
+      console.warn(`Unsupported rules depth encountered at ${path} (depth ${depth}).`);
+      return false;
+    }
     const children = Array.isArray(node.children) ? node.children : [];
     if (children.length === 0) {
       return true;
     }
     const op = node.operator === 'or' ? 'or' : 'and';
     if (op === 'or') {
-      for (const child of children) {
-        if (evaluateExpressionNode(child, placements)) {
+      for (let idx = 0; idx < children.length; idx += 1) {
+        const child = children[idx];
+        const childPath = path === 'root' ? String(idx) : `${path}.${idx}`;
+        if (evaluateExpressionNode(child, placements, depth + 1, childPath)) {
           return true;
         }
       }
       return false;
     }
-    for (const child of children) {
-      if (!evaluateExpressionNode(child, placements)) {
+    for (let idx = 0; idx < children.length; idx += 1) {
+      const child = children[idx];
+      const childPath = path === 'root' ? String(idx) : `${path}.${idx}`;
+      if (!evaluateExpressionNode(child, placements, depth + 1, childPath)) {
         return false;
       }
     }

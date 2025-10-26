@@ -1,4 +1,5 @@
 import { qs } from '../core/utils.js';
+import { validateRulesStructure, MAX_RULE_GROUP_DEPTH } from '../core/rules.js';
 
 let stateRef = null;
 let persistDraft = null;
@@ -7,6 +8,48 @@ let rulesPanel = null;
 let listenersBound = false;
 
 const ROOT_PATH = 'root';
+const NOTICE_DEFAULT_DURATION = 4000;
+const MESSAGE_VARIANTS = new Set(['info', 'warning', 'error', 'success']);
+
+let rulesValidationState = { ok: true, message: '', issues: [] };
+let rulesNotice = null;
+let noticeTimeoutId = null;
+
+function isRootPath(path){
+  return !path || path === ROOT_PATH;
+}
+
+function updateRulesValidation(checks){
+  rulesValidationState = validateRulesStructure(checks, { maxDepth: MAX_RULE_GROUP_DEPTH });
+  return rulesValidationState;
+}
+
+function getRulesValidationState(){
+  return rulesValidationState;
+}
+
+function setRulesNotice(message, variant = 'info', { duration = NOTICE_DEFAULT_DURATION } = {}){
+  if(noticeTimeoutId){
+    clearTimeout(noticeTimeoutId);
+    noticeTimeoutId = null;
+  }
+  if(!message){
+    rulesNotice = null;
+    return;
+  }
+  rulesNotice = { message, variant };
+  if(duration && duration > 0){
+    noticeTimeoutId = setTimeout(() => {
+      rulesNotice = null;
+      noticeTimeoutId = null;
+      renderRulesEditor();
+    }, duration);
+  }
+}
+
+function getRulesNotice(){
+  return rulesNotice;
+}
 
 function createClauseNode(overrides = {}){
   return {
@@ -162,7 +205,7 @@ function getNodeAtPath(expression, path){
 }
 
 function persistScenarioDraft(){
-  if(typeof persistDraft === 'function'){
+  if(typeof persistDraft === 'function' && rulesValidationState.ok){
     persistDraft();
   }
 }
@@ -264,7 +307,9 @@ function ensureRulesStructure(){
     }
   }
 
-  if(changed){
+  const validation = updateRulesValidation(rules.checks);
+
+  if(changed && validation.ok){
     persistScenarioDraft();
   }
 
@@ -506,24 +551,40 @@ function renderGroup(aimId, group, path, options){
   addClauseBtn.textContent = 'Add clause';
   controls.appendChild(addClauseBtn);
 
-  const addGroupBtn = document.createElement('button');
-  addGroupBtn.type = 'button';
-  addGroupBtn.dataset.action = 'add-group';
-  addGroupBtn.dataset.path = path;
-  addGroupBtn.textContent = 'Add subgroup';
-  controls.appendChild(addGroupBtn);
+  if(path === ROOT_PATH){
+    const addGroupBtn = document.createElement('button');
+    addGroupBtn.type = 'button';
+    addGroupBtn.dataset.action = 'add-group';
+    addGroupBtn.dataset.path = path;
+    addGroupBtn.textContent = 'Add subgroup';
+    controls.appendChild(addGroupBtn);
 
-  const groupSelectedBtn = document.createElement('button');
-  groupSelectedBtn.type = 'button';
-  groupSelectedBtn.dataset.action = 'group-selected';
-  groupSelectedBtn.dataset.path = path;
-  groupSelectedBtn.textContent = 'Group selected';
-  groupSelectedBtn.disabled = !Array.isArray(group.children) || group.children.length < 2;
-  controls.appendChild(groupSelectedBtn);
+    const groupSelectedBtn = document.createElement('button');
+    groupSelectedBtn.type = 'button';
+    groupSelectedBtn.dataset.action = 'group-selected';
+    groupSelectedBtn.dataset.path = path;
+    groupSelectedBtn.textContent = 'Group selected';
+    groupSelectedBtn.disabled = !Array.isArray(group.children) || group.children.length < 2;
+    controls.appendChild(groupSelectedBtn);
+  } else {
+    const note = document.createElement('p');
+    note.className = 'rules-note';
+    note.textContent = 'Nested groups cannot contain additional subgroups. Use the top-level group to reorganize clauses.';
+    controls.appendChild(note);
+  }
 
   section.appendChild(controls);
 
   return section;
+}
+
+function createRulesMessageElement(message, variant = 'info'){
+  const el = document.createElement('div');
+  const normalized = typeof variant === 'string' ? variant.toLowerCase() : 'info';
+  const safeVariant = MESSAGE_VARIANTS.has(normalized) ? normalized : 'info';
+  el.className = `rules-message rules-message--${safeVariant}`;
+  el.textContent = message;
+  return el;
 }
 
 function renderAimRules(aim, check, options){
@@ -562,6 +623,16 @@ export function renderRulesEditor(){
     return;
   }
 
+  const checks = ensureRulesStructure();
+  const notice = getRulesNotice();
+  if(notice && notice.message){
+    rulesPanel.appendChild(createRulesMessageElement(notice.message, notice.variant));
+  }
+  const validation = getRulesValidationState();
+  if(!validation.ok && validation.message){
+    rulesPanel.appendChild(createRulesMessageElement(validation.message, 'error'));
+  }
+
   const aims = Array.isArray(scenario.aims) ? scenario.aims : [];
   if(aims.length === 0){
     const empty = document.createElement('p');
@@ -591,8 +662,6 @@ export function renderRulesEditor(){
     value: anchor.id,
     label: anchor.label ? `${anchor.label} (${anchor.id})` : anchor.id
   }));
-
-  const checks = ensureRulesStructure();
 
   aims.forEach(aim => {
     const check = checks.find(chk => chk.aimId === aim.id) || { expression: createGroupNode('and', []) };
@@ -699,7 +768,10 @@ function applyRuleMutation(aimId, mutator){
   if(!entry) return;
   const changed = mutator(entry, checks);
   if(changed){
-    persistScenarioDraft();
+    const validation = updateRulesValidation(checks);
+    if(validation.ok){
+      persistScenarioDraft();
+    }
     renderRulesEditor();
   }
 }
@@ -714,8 +786,14 @@ function addClauseToGroup(aimId, groupPath){
 }
 
 function addGroupToGroup(aimId, groupPath){
+  const targetPath = groupPath || ROOT_PATH;
+  if(!isRootPath(targetPath)){
+    setRulesNotice('Subgroups can only be added to the main group.', 'warning');
+    renderRulesEditor();
+    return;
+  }
   applyRuleMutation(aimId, entry => {
-    const group = getGroupAtPath(entry.expression, groupPath || ROOT_PATH);
+    const group = getGroupAtPath(entry.expression, targetPath);
     if(!group) return false;
     group.children.push(createGroupNode('and', []));
     return true;
@@ -746,11 +824,17 @@ function removeGroupAtPath(aimId, groupPath){
 }
 
 function wrapSelectedClauses(aimId, groupPath, clausePaths){
+  const targetPath = groupPath || ROOT_PATH;
+  if(!isRootPath(targetPath)){
+    setRulesNotice('Grouping clauses is only supported at the top level.', 'warning');
+    renderRulesEditor();
+    return;
+  }
   if(!Array.isArray(clausePaths) || clausePaths.length < 2) return;
   applyRuleMutation(aimId, entry => {
-    const targetGroup = getGroupAtPath(entry.expression, groupPath || ROOT_PATH);
+    const targetGroup = getGroupAtPath(entry.expression, targetPath);
     if(!targetGroup || !Array.isArray(targetGroup.children)) return false;
-    const parentKey = groupPath && groupPath !== ROOT_PATH ? groupPath : ROOT_PATH;
+    const parentKey = targetPath && targetPath !== ROOT_PATH ? targetPath : ROOT_PATH;
     const indexes = [];
     for(const path of clausePaths){
       const parentPath = getParentPath(path);

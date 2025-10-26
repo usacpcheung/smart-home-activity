@@ -1,5 +1,6 @@
 import { loadCatalog } from '../core/catalog.js';
 import { evaluate } from '../core/engine.js';
+import { validateRulesStructure } from '../core/rules.js';
 import { qs, qsa, log } from '../core/utils.js';
 
 const logEl = qs('#log');
@@ -65,6 +66,13 @@ function bindUI(){
 }
 
 function onSubmit(){
+  const validation = validateRulesStructure(state.scenario?.rules?.checks || []);
+  if(!validation.ok){
+    const message = validation.message || 'Rules contain unsupported nested groups. Unable to evaluate.';
+    log(logEl, message);
+    console.error('Rules validation failed', validation);
+    return;
+  }
   const outcome = evaluate(state.scenario, state.placements, state.connected);
   // AI TODO: call animations per aim (success/fail overlay); then mark aims ✔/✖ visually.
   Object.entries(outcome).forEach(([aimId, ok])=>{
