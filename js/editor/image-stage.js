@@ -435,6 +435,22 @@ export function initStage(state, callbacks = {}){
   renderAnchorsPanel();
 }
 
+export function loadStageFromScenario(){
+  ensureElements();
+  if(!stateRef || !imgEl){
+    return;
+  }
+  const background = stateRef.scenario?.stage?.background || null;
+  const backgroundName = stateRef.scenario?.stage?.backgroundName || '';
+  if(background){
+    applyBackground(background, backgroundName);
+  } else {
+    applyBackground('', '');
+  }
+  renderAnchors();
+  renderAnchorsPanel();
+}
+
 export function teardownStage(){
   if(!stageEl) return;
   cancelActiveDrag();
