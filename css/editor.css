@@ -13,7 +13,7 @@
 .anchor-layer{
   position:absolute;
   inset:0;
-  pointer-events:none;
+  pointer-events:auto;
   z-index:2;
 }
 
@@ -25,7 +25,13 @@
   background:#bfdbfe;
   border:2px solid #2563eb;
   transform:translate(-50%, -50%);
-  pointer-events:none;
+  pointer-events:auto;
+  cursor:grab;
+  touch-action:none;
+}
+
+.anchor-dot.dragging{
+  cursor:grabbing;
 }
 
 .anchor-dot .anchor-label{

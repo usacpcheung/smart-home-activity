@@ -9,6 +9,8 @@ let stateRef = null;
 let imageNaturalWidth = 0;
 let imageNaturalHeight = 0;
 let pendingFileName = null;
+let activeDrag = null;
+let suppressStageClick = false;
 
 function escapeAttr(value){
   return String(value ?? '')
@@ -194,6 +196,10 @@ function layoutStage(){
 }
 
 function onStageClick(evt){
+  if(suppressStageClick){
+    suppressStageClick = false;
+    return;
+  }
   if(!imageNaturalWidth || !imageNaturalHeight || !stateRef) return;
   const layout = computeImageLayout();
   if(!layout.scale) return;
@@ -248,16 +254,19 @@ export function addAnchor(data){
 
 export function renderAnchors(){
   if(!anchorLayer || !stateRef) return;
+  if(activeDrag) return;
   anchorLayer.innerHTML = '';
   const layout = computeImageLayout();
   if(!layout.scale) return;
-  stateRef.scenario.anchors.forEach(anchor=>{
+  stateRef.scenario.anchors.forEach((anchor, index)=>{
     const x = clamp01(anchor.x);
     const y = clamp01(anchor.y);
     const dot = document.createElement('div');
     dot.className = 'anchor-dot';
     dot.style.left = `${layout.left + x * layout.width}px`;
     dot.style.top = `${layout.top + y * layout.height}px`;
+    dot.dataset.index = String(index);
+    dot.addEventListener('pointerdown', onAnchorPointerDown);
 
     const label = document.createElement('span');
     label.className = 'anchor-label';
@@ -324,6 +333,7 @@ export function initStage(state){
 
 export function teardownStage(){
   if(!stageEl) return;
+  cancelActiveDrag();
   window.removeEventListener('resize', layoutStage);
   if(bgInput){
     bgInput.removeEventListener('change', handleFileChange);
@@ -341,4 +351,112 @@ function clamp01(value){
   if(value < 0) return 0;
   if(value > 1) return 1;
   return value;
+}
+
+function onAnchorPointerDown(evt){
+  if(!stateRef || !anchorLayer) return;
+  const target = evt.currentTarget;
+  if(!target || !target.dataset) return;
+  const index = Number(target.dataset.index);
+  if(Number.isNaN(index)) return;
+  const anchors = stateRef.scenario?.anchors;
+  if(!anchors || !anchors[index]) return;
+  const layout = computeImageLayout();
+  if(!layout.scale) return;
+
+  suppressStageClick = true;
+  evt.preventDefault();
+  evt.stopPropagation();
+
+  cancelActiveDrag();
+  activeDrag = {
+    index,
+    pointerId: evt.pointerId,
+    dot: target,
+    moved: false
+  };
+
+  target.classList.add('dragging');
+  if(target.setPointerCapture){
+    target.setPointerCapture(evt.pointerId);
+  }
+  target.addEventListener('pointermove', onAnchorPointerMove);
+  target.addEventListener('pointerup', onAnchorPointerUp);
+  target.addEventListener('pointercancel', onAnchorPointerUp);
+}
+
+function onAnchorPointerMove(evt){
+  if(!activeDrag || evt.pointerId !== activeDrag.pointerId) return;
+  evt.preventDefault();
+  const layout = computeImageLayout();
+  if(!layout.scale) return;
+  const anchors = stateRef?.scenario?.anchors;
+  if(!anchors || !anchors[activeDrag.index]) return;
+
+  const { x, y } = getNormalizedPointer(evt, layout);
+  anchors[activeDrag.index].x = x;
+  anchors[activeDrag.index].y = y;
+  activeDrag.moved = true;
+
+  const dot = activeDrag.dot;
+  if(dot){
+    dot.style.left = `${layout.left + x * layout.width}px`;
+    dot.style.top = `${layout.top + y * layout.height}px`;
+  }
+}
+
+function onAnchorPointerUp(evt){
+  if(!activeDrag || evt.pointerId !== activeDrag.pointerId) return;
+  evt.preventDefault();
+  evt.stopPropagation();
+  suppressStageClick = true;
+
+  const { dot, pointerId, moved } = activeDrag;
+  if(dot){
+    dot.classList.remove('dragging');
+    dot.removeEventListener('pointermove', onAnchorPointerMove);
+    dot.removeEventListener('pointerup', onAnchorPointerUp);
+    dot.removeEventListener('pointercancel', onAnchorPointerUp);
+    if(dot.hasPointerCapture && dot.hasPointerCapture(pointerId)){
+      dot.releasePointerCapture(pointerId);
+    }
+  }
+
+  activeDrag = null;
+  renderAnchors();
+  if(moved){
+    renderAnchorsPanel();
+  }
+
+  setTimeout(()=>{
+    suppressStageClick = false;
+  }, 0);
+}
+
+function cancelActiveDrag(){
+  if(!activeDrag) return;
+  const { dot, pointerId } = activeDrag;
+  if(dot){
+    dot.classList.remove('dragging');
+    dot.removeEventListener('pointermove', onAnchorPointerMove);
+    dot.removeEventListener('pointerup', onAnchorPointerUp);
+    dot.removeEventListener('pointercancel', onAnchorPointerUp);
+    if(dot.hasPointerCapture && dot.hasPointerCapture(pointerId)){
+      dot.releasePointerCapture(pointerId);
+    }
+  }
+  activeDrag = null;
+  suppressStageClick = false;
+}
+
+function getNormalizedPointer(evt, layout){
+  if(!stageEl || !layout.width || !layout.height){
+    return { x:0, y:0 };
+  }
+  const rect = stageEl.getBoundingClientRect();
+  const localX = evt.clientX - rect.left - layout.left;
+  const localY = evt.clientY - rect.top - layout.top;
+  const normX = clamp01(localX / layout.width);
+  const normY = clamp01(localY / layout.height);
+  return { x: normX, y: normY };
 }
