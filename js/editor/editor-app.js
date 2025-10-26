@@ -1,6 +1,7 @@
 import { loadCatalog } from '../core/catalog.js';
 import { saveLocal, loadLocal, downloadJson, pickJsonFile } from '../core/storage.js';
 import { qs, log } from '../core/utils.js';
+import { initStage } from './image-stage.js';
 
 const state = {
   catalog: null,
@@ -20,6 +21,7 @@ async function init(){
   state.catalog = await loadCatalog();
   renderCatalog();
   bindExportImport();
+  initStage(state);
   // AI TODO:
   // 1) implement image-stage loader (bgUpload → draw in #stage; store stage.background as filename)
   // 2) click-to-add anchors in stage (store normalized coords)
