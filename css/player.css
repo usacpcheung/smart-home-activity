@@ -1,4 +1,7 @@
 .device-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px;margin-bottom:8px;cursor:grab}
+.stage .bg{display:block;width:100%;height:auto}
+.stage .anchor-layer{position:absolute;inset:0;pointer-events:none}
+.stage .anchor-layer .anchor-hit{pointer-events:auto}
 .anchor-hit{position:absolute;width:18px;height:18px;border-radius:50%;transform:translate(-50%,-50%);background:#94a3b8;opacity:.5}
 .placed{outline:2px solid #0ea5e9;border-radius:8px;padding:2px 4px;background:#fff;position:absolute;transform:translate(-50%,-50%)}
 .anim-success{animation:flash 1.2s ease}

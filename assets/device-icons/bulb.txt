@@ -1,0 +1,3 @@
+Placeholder for bulb.png
+Intended dimensions: 150px x 150px.
+Replace this text file with a PNG asset when art is available.
