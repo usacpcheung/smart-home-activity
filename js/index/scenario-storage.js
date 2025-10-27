@@ -1,11 +1,77 @@
 const STORAGE_KEY = 'uploadedScenarios';
 const MAX_ENTRIES = 3;
+const SAMPLE_SCENARIO_ID = 'sample-scenario';
+const SAMPLE_SCENARIO_URL = 'scenarios/case01/scenario.json';
+const SAMPLE_SCENARIO_FILENAME = 'scenarios/case01/scenario.json';
 
 const uploadInput = document.getElementById('scenarioUpload');
 const feedbackEl = document.getElementById('scenarioUploadFeedback');
 const tableEl = document.getElementById('storedScenariosTable');
 const tableBodyEl = document.getElementById('storedScenariosBody');
 const emptyStateEl = document.getElementById('storedScenariosEmpty');
+
+let sampleScenarioEntry = null;
+let sampleScenarioLoadPromise = null;
+
+function initializeScenarioTable() {
+  if (!tableEl) {
+    return;
+  }
+
+  if (emptyStateEl) {
+    emptyStateEl.hidden = false;
+    emptyStateEl.textContent = 'Loading sample scenario…';
+  }
+
+  renderStoredScenarios();
+
+  if (sampleScenarioLoadPromise) {
+    return;
+  }
+
+  sampleScenarioLoadPromise = loadSampleScenario()
+    .catch((error) => {
+      console.warn('Failed to load sample scenario', error);
+      sampleScenarioEntry = null;
+      setFeedback('Sample scenario could not be loaded. Upload a scenario JSON to get started.', 'error');
+      if (emptyStateEl) {
+        emptyStateEl.hidden = false;
+        emptyStateEl.textContent = 'Sample scenario is unavailable. Upload a scenario JSON to continue.';
+      }
+    })
+    .finally(() => {
+      renderStoredScenarios();
+    });
+}
+
+async function loadSampleScenario() {
+  try {
+    const response = await fetch(SAMPLE_SCENARIO_URL, { cache: 'no-cache' });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const rawScenario = await response.json();
+    const { errors, scenario } = validateAndNormalize(rawScenario);
+
+    if (errors.length > 0 || !scenario) {
+      throw new Error(errors.join(' ') || 'Sample scenario is invalid.');
+    }
+
+    sampleScenarioEntry = {
+      id: SAMPLE_SCENARIO_ID,
+      title: scenario.meta.title || 'Sample scenario',
+      uploadedAt: null,
+      filename: SAMPLE_SCENARIO_FILENAME,
+      scenario,
+      isSample: true
+    };
+
+    return sampleScenarioEntry;
+  } catch (error) {
+    throw error;
+  }
+}
 
 const storageAvailable = (() => {
   try {
@@ -44,7 +110,7 @@ if (tableEl) {
   });
 }
 
-renderStoredScenarios();
+initializeScenarioTable();
 
 window.addEventListener('storage', (event) => {
   if (event.key === STORAGE_KEY) {
@@ -91,6 +157,16 @@ if (uploadInput) {
 }
 
 function handlePlay(entryId) {
+  if (entryId === SAMPLE_SCENARIO_ID) {
+    if (!sampleScenarioEntry) {
+      setFeedback('Sample scenario is not available. Please refresh and try again.', 'error');
+      return;
+    }
+
+    window.location.href = `player.html?scenario=${encodeURIComponent(SAMPLE_SCENARIO_URL)}`;
+    return;
+  }
+
   if (!storageAvailable) {
     setFeedback('Local storage is not available. Unable to play stored scenarios.', 'error');
     return;
@@ -107,6 +183,11 @@ function handlePlay(entryId) {
 }
 
 function handleClear(entryId) {
+  if (entryId === SAMPLE_SCENARIO_ID) {
+    setFeedback('Sample scenario cannot be cleared.', 'info');
+    return;
+  }
+
   if (!storageAvailable) {
     setFeedback('Local storage is not available. Nothing to clear.', 'error');
     return;
@@ -130,27 +211,31 @@ function renderStoredScenarios(entriesOverride) {
     return;
   }
 
-  if (!storageAvailable) {
-    tableEl.hidden = true;
-    emptyStateEl.hidden = false;
-    emptyStateEl.textContent = 'Local storage is not available. Uploaded scenarios cannot be stored.';
-    return;
-  }
-
-  const entries = Array.isArray(entriesOverride) ? entriesOverride : loadStoredScenarios();
+  const storedEntries = storageAvailable
+    ? (Array.isArray(entriesOverride) ? entriesOverride : loadStoredScenarios())
+    : [];
+  const displayEntries = getDisplayEntries(storedEntries);
   tableBodyEl.innerHTML = '';
 
-  if (!entries.length) {
+  const sampleLoading = Boolean(sampleScenarioLoadPromise) && !sampleScenarioEntry;
+
+  if (!displayEntries.length) {
     tableEl.hidden = true;
     emptyStateEl.hidden = false;
-    emptyStateEl.textContent = 'No uploaded scenarios yet.';
+    if (sampleLoading) {
+      emptyStateEl.textContent = 'Loading sample scenario…';
+    } else {
+      emptyStateEl.textContent = storageAvailable
+        ? 'No uploaded scenarios yet.'
+        : 'Local storage is not available. Uploaded scenarios cannot be stored.';
+    }
     return;
   }
 
   tableEl.hidden = false;
   emptyStateEl.hidden = true;
 
-  entries.forEach((entry, index) => {
+  displayEntries.forEach((entry, index) => {
     const row = document.createElement('tr');
     row.dataset.entryId = entry.id;
 
@@ -162,11 +247,27 @@ function renderStoredScenarios(entriesOverride) {
     const actionsCell = document.createElement('td');
     actionsCell.className = 'stored-scenarios-actions';
     actionsCell.appendChild(createActionButton('Play', 'play'));
-    actionsCell.appendChild(createActionButton('Clear', 'clear'));
+
+    const clearButton = createActionButton('Clear', 'clear', entry.isSample ? {
+      disabled: true,
+      title: 'Sample scenario cannot be cleared.'
+    } : undefined);
+    actionsCell.appendChild(clearButton);
     row.appendChild(actionsCell);
 
     tableBodyEl.appendChild(row);
   });
+}
+
+function getDisplayEntries(storedEntries) {
+  const entries = Array.isArray(storedEntries) ? storedEntries.slice(0, MAX_ENTRIES) : [];
+
+  if (!sampleScenarioEntry) {
+    return entries;
+  }
+
+  const withoutSample = entries.filter((entry) => entry.id !== SAMPLE_SCENARIO_ID);
+  return [sampleScenarioEntry, ...withoutSample];
 }
 
 function setFeedback(message, state = 'info') {
@@ -183,12 +284,21 @@ function createCell(text) {
   return cell;
 }
 
-function createActionButton(label, action) {
+function createActionButton(label, action, options = {}) {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'btn';
   button.dataset.action = action;
   button.textContent = label;
+
+  if (options && typeof options === 'object') {
+    if (options.disabled) {
+      button.disabled = true;
+    }
+    if (typeof options.title === 'string' && options.title.length > 0) {
+      button.title = options.title;
+    }
+  }
   return button;
 }
 
