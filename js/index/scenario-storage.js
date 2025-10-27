@@ -106,6 +106,8 @@ if (tableEl) {
       handlePlay(entryId);
     } else if (action === 'clear') {
       handleClear(entryId);
+    } else if (action === 'edit-title') {
+      handleEditTitle(entryId);
     }
   });
 }
@@ -137,6 +139,14 @@ if (uploadInput) {
       } else if (!storageAvailable) {
         setFeedback('Local storage is not available. Scenario could not be saved.', 'error');
       } else {
+        const chosenTitle = promptForTitle(scenario.meta.title, 'Enter a title for this scenario:');
+        if (chosenTitle === null) {
+          setFeedback('Upload canceled. Scenario was not saved.', 'info');
+          return;
+        }
+
+        scenario.meta.title = chosenTitle;
+
         const { slotIndex, entries } = storeScenario(scenario, file.name);
         renderStoredScenarios(entries);
         const noteSuffix = notes.length > 0 ? ` ${notes.join(' ')}` : '';
@@ -206,6 +216,53 @@ function handleClear(entryId) {
   setFeedback(`Cleared "${title}" from stored scenarios.`, 'info');
 }
 
+function handleEditTitle(entryId) {
+  const isSample = entryId === SAMPLE_SCENARIO_ID;
+
+  if (isSample && !sampleScenarioEntry) {
+    setFeedback('Sample scenario is not available. Please refresh and try again.', 'error');
+    return;
+  }
+
+  let currentTitle = 'Untitled scenario';
+  if (isSample) {
+    currentTitle = sampleScenarioEntry.title || currentTitle;
+  } else {
+    const storedEntry = getStoredScenario(entryId);
+    if (!storedEntry) {
+      setFeedback('Selected scenario is no longer available. Please upload it again.', 'error');
+      renderStoredScenarios();
+      return;
+    }
+    currentTitle = storedEntry.title || currentTitle;
+  }
+
+  const updatedTitle = promptForTitle(currentTitle, 'Update the title for this scenario:');
+  if (updatedTitle === null) {
+    setFeedback('Title update canceled.', 'info');
+    return;
+  }
+
+  if (isSample) {
+    sampleScenarioEntry.title = updatedTitle;
+    if (sampleScenarioEntry.scenario?.meta) {
+      sampleScenarioEntry.scenario.meta.title = updatedTitle;
+    }
+    renderStoredScenarios();
+    setFeedback(`Sample scenario renamed to "${updatedTitle}".`, 'success');
+    return;
+  }
+
+  const updatedEntries = updateStoredScenarioTitle(entryId, updatedTitle);
+  if (!updatedEntries) {
+    setFeedback('Unable to update the scenario title. Please try again.', 'error');
+    return;
+  }
+
+  renderStoredScenarios(updatedEntries);
+  setFeedback(`Scenario renamed to "${updatedTitle}".`, 'success');
+}
+
 function renderStoredScenarios(entriesOverride) {
   if (!tableEl || !tableBodyEl || !emptyStateEl) {
     return;
@@ -246,6 +303,7 @@ function renderStoredScenarios(entriesOverride) {
 
     const actionsCell = document.createElement('td');
     actionsCell.className = 'stored-scenarios-actions';
+    actionsCell.appendChild(createActionButton('Edit title', 'edit-title'));
     actionsCell.appendChild(createActionButton('Play', 'play'));
 
     const clearButton = createActionButton('Clear', 'clear', entry.isSample ? {
@@ -411,6 +469,32 @@ function storeScenario(scenario, filename) {
   return { slotIndex, entries };
 }
 
+function updateStoredScenarioTitle(entryId, newTitle) {
+  const entries = loadStoredScenarios();
+  const index = entries.findIndex((item) => item.id === entryId);
+
+  if (index === -1) {
+    return null;
+  }
+
+  const entry = entries[index];
+  const updatedEntry = {
+    ...entry,
+    title: newTitle,
+    scenario: {
+      ...(entry.scenario || {}),
+      meta: {
+        ...(entry.scenario?.meta || {}),
+        title: newTitle
+      }
+    }
+  };
+
+  entries[index] = updatedEntry;
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  return entries;
+}
+
 function loadStoredScenarios() {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -455,5 +539,24 @@ function formatUploadedAt(value) {
     return date.toLocaleString();
   } catch (error) {
     return '—';
+  }
+}
+
+function promptForTitle(defaultTitle, message) {
+  let promptDefault = typeof defaultTitle === 'string' ? defaultTitle : '';
+
+  for (;;) {
+    const response = window.prompt(message, promptDefault);
+    if (response === null) {
+      return null;
+    }
+
+    const trimmed = response.trim();
+    if (trimmed.length > 0) {
+      return trimmed;
+    }
+
+    setFeedback('Title cannot be empty. Please provide a title.', 'error');
+    promptDefault = '';
   }
 }
