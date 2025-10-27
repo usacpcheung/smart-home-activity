@@ -88,8 +88,9 @@ function createAnchorElement(anchor){
   dot.setAttribute('aria-hidden', 'true');
   root.appendChild(dot);
 
+  let labelEl = null;
   if(labelText){
-    const labelEl = document.createElement('span');
+    labelEl = document.createElement('span');
     labelEl.className = 'anchor-hit__label';
     labelEl.textContent = labelText;
     labelEl.setAttribute('aria-hidden', 'true');
@@ -97,7 +98,7 @@ function createAnchorElement(anchor){
   }
 
   layer.appendChild(root);
-  return { root, hit: dot };
+  return { root, hit: dot, label: labelEl };
 }
 
 function clamp01(value){
@@ -139,6 +140,8 @@ function layoutAnchors(){
   layer.style.top = `${offsetTop}px`;
 
   const anchors = Array.isArray(lastScenario?.anchors) ? lastScenario.anchors : [];
+  const layerRect = layer.getBoundingClientRect();
+  const stagePadding = 8;
   for(const anchor of anchors){
     if(!anchor || !anchor.id) continue;
     const entry = anchorElements.get(anchor.id);
@@ -148,8 +151,49 @@ function layoutAnchors(){
     entry.relativeY = y;
     entry.x = x + offsetLeft;
     entry.y = y + offsetTop;
-    entry.element.style.left = `${x}px`;
-    entry.element.style.top = `${y}px`;
+    const anchorEl = entry.element;
+    anchorEl.style.left = `${x}px`;
+    anchorEl.style.top = `${y}px`;
+
+    const labelEl = entry.labelElement;
+    if(labelEl){
+      anchorEl.classList.remove('anchor-hit--label-top');
+      anchorEl.style.removeProperty('--anchor-label-shift-x');
+      anchorEl.style.removeProperty('--anchor-label-shift-y');
+
+      let labelRect = labelEl.getBoundingClientRect();
+      if(labelRect.width || labelRect.height){
+        if(labelRect.bottom > layerRect.bottom - stagePadding){
+          anchorEl.classList.add('anchor-hit--label-top');
+          labelRect = labelEl.getBoundingClientRect();
+        }
+        if(labelRect.top < layerRect.top + stagePadding){
+          anchorEl.classList.remove('anchor-hit--label-top');
+          labelRect = labelEl.getBoundingClientRect();
+        }
+
+        let shiftX = 0;
+        if(labelRect.left < layerRect.left + stagePadding){
+          shiftX = (layerRect.left + stagePadding) - labelRect.left;
+        } else if(labelRect.right > layerRect.right - stagePadding){
+          shiftX = (layerRect.right - stagePadding) - labelRect.right;
+        }
+        if(shiftX){
+          anchorEl.style.setProperty('--anchor-label-shift-x', `${shiftX}px`);
+          labelRect = labelEl.getBoundingClientRect();
+        }
+
+        let shiftY = 0;
+        if(labelRect.top < layerRect.top + stagePadding){
+          shiftY = (layerRect.top + stagePadding) - labelRect.top;
+        } else if(labelRect.bottom > layerRect.bottom - stagePadding){
+          shiftY = (layerRect.bottom - stagePadding) - labelRect.bottom;
+        }
+        if(shiftY){
+          anchorEl.style.setProperty('--anchor-label-shift-y', `${shiftY}px`);
+        }
+      }
+    }
   }
 }
 
@@ -168,6 +212,7 @@ function rebuildAnchors(){
     anchorElements.set(anchor.id, {
       element: element.root,
       hitElement: element.hit,
+      labelElement: element.label || null,
       anchor,
       x: 0,
       y: 0,

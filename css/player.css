@@ -6,9 +6,10 @@
 .stage .bg{display:block;width:100%;height:auto}
 .stage .anchor-layer{position:absolute;inset:0;pointer-events:none}
 .stage .anchor-layer .anchor-hit{pointer-events:auto}
-.anchor-hit{position:absolute;width:20px;height:20px;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;pointer-events:auto;border-radius:9999px;animation:anchorPulse 2.4s ease-in-out infinite}
+.anchor-hit{position:absolute;width:20px;height:20px;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;pointer-events:auto;border-radius:9999px;animation:anchorPulse 2.4s ease-in-out infinite;--anchor-label-shift-x:0px;--anchor-label-shift-y:0px}
 .anchor-hit__dot{position:relative;display:block;width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#bae6fd 0,#38bdf8 55%,#0284c7 100%);border:2px solid rgba(248,250,252,.95);box-shadow:0 0 0 2px rgba(15,23,42,.4),0 0 10px rgba(56,189,248,.7);opacity:.95}
-.anchor-hit__label{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);white-space:nowrap;font-size:12px;line-height:1.2;font-weight:600;color:#f8fafc;background:rgba(15,23,42,.85);border:1px solid rgba(148,163,184,.7);border-radius:9999px;padding:2px 8px;box-shadow:0 2px 6px rgba(15,23,42,.35);pointer-events:none;text-transform:none;letter-spacing:.01em}
+.anchor-hit__label{position:absolute;top:calc(100% + 6px);left:50%;transform:translate(calc(-50% + var(--anchor-label-shift-x,0px)),var(--anchor-label-shift-y,0px));white-space:nowrap;font-size:12px;line-height:1.2;font-weight:600;color:#f8fafc;background:rgba(15,23,42,.85);border:1px solid rgba(148,163,184,.7);border-radius:9999px;padding:2px 8px;box-shadow:0 2px 6px rgba(15,23,42,.35);pointer-events:none;text-transform:none;letter-spacing:.01em;max-width:180px;overflow:hidden;text-overflow:ellipsis}
+.anchor-hit--label-top .anchor-hit__label{top:auto;bottom:calc(100% + 6px)}
 .anchor-hit:focus-visible{outline:2px solid #fbbf24;outline-offset:4px}
 @media (prefers-reduced-motion: reduce){.anchor-hit{animation:none}}
 .anchor-hit__dot::after{content:"";position:absolute;inset:-6px;border-radius:inherit;box-shadow:0 0 0 2px rgba(255,255,255,.45);pointer-events:none}
