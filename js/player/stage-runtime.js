@@ -65,20 +65,39 @@ function ensureAnchorLayer(){
 function createAnchorElement(anchor){
   const layer = ensureAnchorLayer();
   if(!layer) return null;
-  const el = document.createElement('div');
-  el.className = 'anchor-hit';
-  el.dataset.anchorId = anchor.id;
-  if(anchor.label){
-    el.title = anchor.label;
-    el.setAttribute('aria-label', anchor.label);
-  } else if(anchor.id){
-    el.setAttribute('aria-label', anchor.id);
+
+  const root = document.createElement('div');
+  root.className = 'anchor-hit';
+  root.dataset.anchorId = anchor.id;
+
+  const labelText = typeof anchor.label === 'string' && anchor.label.trim()
+    ? anchor.label.trim()
+    : (anchor.id || '');
+
+  if(labelText){
+    root.setAttribute('aria-label', labelText);
+    root.title = labelText;
   }
-  el.tabIndex = 0;
-  el.style.position = 'absolute';
-  el.style.pointerEvents = 'auto';
-  layer.appendChild(el);
-  return el;
+
+  root.tabIndex = 0;
+  root.style.position = 'absolute';
+  root.style.pointerEvents = 'auto';
+
+  const dot = document.createElement('span');
+  dot.className = 'anchor-hit__dot';
+  dot.setAttribute('aria-hidden', 'true');
+  root.appendChild(dot);
+
+  if(labelText){
+    const labelEl = document.createElement('span');
+    labelEl.className = 'anchor-hit__label';
+    labelEl.textContent = labelText;
+    labelEl.setAttribute('aria-hidden', 'true');
+    root.appendChild(labelEl);
+  }
+
+  layer.appendChild(root);
+  return { root, hit: dot };
 }
 
 function clamp01(value){
@@ -146,7 +165,15 @@ function rebuildAnchors(){
     if(typeof anchor.x !== 'number' || typeof anchor.y !== 'number') continue;
     const element = createAnchorElement(anchor);
     if(!element) continue;
-    anchorElements.set(anchor.id, { element, anchor, x: 0, y: 0, relativeX: 0, relativeY: 0 });
+    anchorElements.set(anchor.id, {
+      element: element.root,
+      hitElement: element.hit,
+      anchor,
+      x: 0,
+      y: 0,
+      relativeX: 0,
+      relativeY: 0
+    });
   }
   layoutAnchors();
 }
@@ -229,7 +256,8 @@ export function getAnchorAtPoint(inputX, inputY){
   for(const [anchorId, entry] of anchorElements){
     const el = entry.element;
     if(!el) continue;
-    const radius = (el.offsetWidth || el.clientWidth || 18) / 2;
+    const hitEl = entry.hitElement || el;
+    const radius = (hitEl.offsetWidth || hitEl.clientWidth || 18) / 2;
     const dx = stageX - entry.x;
     const dy = stageY - entry.y;
     if((dx * dx) + (dy * dy) <= radius * radius){
