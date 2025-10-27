@@ -13,3 +13,7 @@ body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;background:#f8fafc;c
 .log{background:#0b1020;color:#e2e8f0;padding:8px;border-radius:8px;height:200px;overflow:auto}
 .overlay{position:absolute;inset:0;pointer-events:none}
 .aims{background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:8px;margin-bottom:8px}
+.stored-scenarios-table{width:100%;border-collapse:collapse;margin-top:12px}
+.stored-scenarios-table th,.stored-scenarios-table td{border:1px solid #e5e7eb;padding:6px 8px;text-align:left;font-size:14px}
+.stored-scenarios-actions{display:flex;gap:8px}
+.stored-scenarios-actions .btn{padding:4px 8px;font-size:13px}

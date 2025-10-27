@@ -18,18 +18,40 @@
     <p><strong>Player</strong>: students play a scenario (device selection, placement, connect, submit, animations).</p>
     <div class="row">
       <a class="btn" href="editor.html">Open Editor</a>
-      <a class="btn" href="player.html?scenario=scenarios/case01/scenario.json">Open Player (Sample)</a>
     </div>
   </section>
 
   <section class="card">
     <h3>Scenarios</h3>
     <p>Upload your scenario folder (e.g. <code>/scenarios/mycase</code>) containing <code>scenario.json</code> and its background image.</p>
+    <form class="scenario-upload" id="scenarioUploadForm">
+      <label for="scenarioUpload">Scenario JSON file</label>
+      <input type="file" id="scenarioUpload" name="scenarioUpload" accept="application/json"/>
+      <p class="hint">Select a <code>.json</code> file that was exported from the editor.</p>
+      <div class="upload-feedback" id="scenarioUploadFeedback" role="status" aria-live="polite"></div>
+    </form>
+    <div class="stored-scenarios" id="storedScenariosSection">
+      <h4>Stored scenarios</h4>
+      <p class="hint" id="storedScenariosEmpty">No uploaded scenarios yet.</p>
+      <table id="storedScenariosTable" class="stored-scenarios-table" hidden>
+        <thead>
+          <tr>
+            <th scope="col">Slot</th>
+            <th scope="col">Title</th>
+            <th scope="col">File name</th>
+            <th scope="col">Uploaded</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="storedScenariosBody"></tbody>
+      </table>
+    </div>
   </section>
 </main>
 
 <footer class="bar foot">
   <small>Static, front-end only. Apache / GitHub Pages friendly.</small>
 </footer>
+<script type="module" src="js/index/scenario-storage.js"></script>
 </body>
 </html>
