@@ -1,4 +1,8 @@
-.device-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px;margin-bottom:8px;cursor:grab}
+.device-card{display:flex;align-items:center;gap:12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px;margin-bottom:8px;cursor:grab;min-height:56px;flex-wrap:wrap}
+.device-card:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
+.device-card__icon{width:48px;height:48px;flex:0 0 48px;border-radius:6px;object-fit:contain;background:#e2e8f0}
+.device-card__icon--missing{display:none}
+.device-card__label{flex:1 1 160px;min-width:0;font-weight:500;color:#1f2937;line-height:1.3}
 .stage .bg{display:block;width:100%;height:auto}
 .stage .anchor-layer{position:absolute;inset:0;pointer-events:none}
 .stage .anchor-layer .anchor-hit{pointer-events:auto}

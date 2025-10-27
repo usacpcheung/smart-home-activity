@@ -78,8 +78,34 @@ function renderDeviceList(){
     if(!group.length) return;
     const h = document.createElement('h3'); h.textContent = cat.name; list.appendChild(h);
     group.forEach(d=>{
-      const card = document.createElement('div'); card.className='device-card'; card.tabIndex=0;
-      card.dataset.deviceId = d.id; card.textContent = d.name;
+      const card = document.createElement('div');
+      card.className='device-card';
+      card.tabIndex=0;
+      card.dataset.deviceId = d.id;
+
+      const icon = document.createElement('img');
+      icon.className = 'device-card__icon';
+      icon.alt = d.name;
+      icon.loading = 'lazy';
+      if (d.icon) {
+        icon.src = `assets/device-icons/${d.icon}.png`;
+        icon.addEventListener('error', () => {
+          icon.classList.add('device-card__icon--missing');
+          icon.removeAttribute('src');
+          icon.alt = '';
+          icon.setAttribute('aria-hidden', 'true');
+        }, { once: true });
+      } else {
+        icon.classList.add('device-card__icon--missing');
+        icon.alt = '';
+        icon.setAttribute('aria-hidden', 'true');
+      }
+
+      const label = document.createElement('span');
+      label.className = 'device-card__label';
+      label.textContent = d.name;
+
+      card.append(icon, label);
       // AI TODO: add dragstart handlers or “Place here” keyboard flow.
       list.appendChild(card);
     });
