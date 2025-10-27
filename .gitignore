@@ -137,3 +137,6 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Ignore all PNGs in the 'assets/device-icons' folder
+assets/device-icons/*.png
