@@ -20,19 +20,19 @@
     <div class="aims">
       <h3>Aims</h3>
       <ul id="aimsList"></ul>
-      <div class="row">
-        <button id="btnConnect">Connect All</button>
-        <button id="btnSubmit">Submit My Design</button>
-        <button id="btnReset">Reset</button>
-      </div>
     </div>
     <div id="playerStage" class="stage" aria-label="Play Stage"></div>
     <div id="overlay" class="overlay" aria-hidden="true"></div>
   </section>
 
-  <aside class="pane">
-    <h2>Log</h2>
-    <pre id="log" class="log"></pre>
+  <aside class="pane controls-pane">
+    <h2>Controls</h2>
+    <div id="statusMessages" class="status-messages" role="status" aria-live="polite"></div>
+    <div class="controls-stack">
+      <button id="btnConnect">Connect All</button>
+      <button id="btnSubmit">Submit My Design</button>
+      <button id="btnReset">Reset</button>
+    </div>
   </aside>
 </main>
 

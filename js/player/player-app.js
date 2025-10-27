@@ -1,13 +1,13 @@
 import { loadCatalog } from '../core/catalog.js';
 import { evaluate } from '../core/engine.js';
 import { validateRulesStructure } from '../core/rules.js';
-import { qs, qsa, log } from '../core/utils.js';
+import { qs } from '../core/utils.js';
 import { renderStage as renderStageView } from './stage-runtime.js';
 
 const STORED_SCENARIOS_KEY = 'uploadedScenarios';
 const DEFAULT_SCENARIO_URL = 'scenarios/case01/scenario.json';
 
-const logEl = qs('#log');
+const statusEl = qs('#statusMessages');
 const state = {
   scenario: null,
   catalog: null,
@@ -25,7 +25,7 @@ async function init(){
   if (storedSlotId) {
     scenarioInfo = loadScenarioFromStorage(storedSlotId);
     if (!scenarioInfo) {
-      log(logEl, 'Stored scenario not available. Loading default sample scenario.');
+      pushStatus('Stored scenario not available. Loading default sample scenario.', 'warn');
     }
   }
 
@@ -34,13 +34,13 @@ async function init(){
     scenarioInfo = await loadScenarioFromUrl(requestedUrl);
 
     if (!scenarioInfo && requestedUrl !== DEFAULT_SCENARIO_URL) {
-      log(logEl, 'Falling back to default sample scenario.');
+      pushStatus('Falling back to default sample scenario.', 'warn');
       scenarioInfo = await loadScenarioFromUrl(DEFAULT_SCENARIO_URL);
     }
   }
 
   if (!scenarioInfo) {
-    log(logEl, 'Unable to load a scenario.');
+    pushStatus('Unable to load a scenario.', 'error');
     return;
   }
 
@@ -59,7 +59,7 @@ async function init(){
   const catalogSource = state.scenario?.devicePool?.catalogSource || 'data/catalog/devices.json';
   state.catalog = await loadCatalog(catalogSource);
   renderAims(); renderDeviceList(); renderStageView(state.scenario); bindUI();
-  log(logEl, 'Scenario loaded: ' + (state.scenario?.meta?.title || 'untitled'));
+  pushStatus('Scenario loaded: ' + (state.scenario?.meta?.title || 'untitled'));
 }
 
 function renderAims(){
@@ -126,7 +126,7 @@ async function loadScenarioFromUrl(url) {
       baseUrl: scenarioDir(url)
     };
   } catch (error) {
-    log(logEl, `Failed to load scenario from ${url}: ${error.message}`);
+    pushStatus(`Failed to load scenario from ${url}: ${error.message}`, 'error');
     console.error('Failed to load scenario from URL', error);
     return null;
   }
@@ -165,7 +165,7 @@ function cloneScenarioData(data) {
 }
 
 function bindUI(){
-  qs('#btnConnect').addEventListener('click', ()=>{ state.connected = true; log(logEl, 'Connect All pressed'); /* AI TODO: small glow animation */ });
+  qs('#btnConnect').addEventListener('click', ()=>{ state.connected = true; pushStatus('Devices marked as connected.'); /* AI TODO: small glow animation */ });
   qs('#btnSubmit').addEventListener('click', onSubmit);
   qs('#btnReset').addEventListener('click', ()=>location.reload());
 }
@@ -174,15 +174,54 @@ function onSubmit(){
   const validation = validateRulesStructure(state.scenario?.rules?.checks || []);
   if(!validation.ok){
     const message = validation.message || 'Rules contain unsupported nested groups. Unable to evaluate.';
-    log(logEl, message);
+    pushStatus(message, 'error');
     console.error('Rules validation failed', validation);
     return;
   }
   const outcome = evaluate(state.scenario, state.placements, state.connected);
   // AI TODO: call animations per aim (success/fail overlay); then mark aims ✔/✖ visually.
-  Object.entries(outcome).forEach(([aimId, ok])=>{
-    log(logEl, `${aimId}: ${ok?'PASS':'FAIL'}`);
+  const { total, passed } = updateAimStatus(outcome);
+  if (total > 0) {
+    const tone = passed === total ? 'success' : 'warn';
+    pushStatus(`Evaluation complete: ${passed}/${total} aims satisfied.`, tone);
+  } else {
+    pushStatus('Evaluation complete.', 'info');
+  }
+}
+
+function updateAimStatus(outcome){
+  const list = qs('#aimsList');
+  if (!list) {
+    return { total: 0, passed: 0 };
+  }
+  const items = [...list.querySelectorAll('li')];
+  let passed = 0;
+  items.forEach((li)=>{
+    li.classList.remove('aim-pass', 'aim-fail');
+    const aimId = li.dataset.aimId;
+    if (!aimId) {
+      return;
+    }
+    const result = outcome?.[aimId];
+    if (result === true) {
+      li.classList.add('aim-pass');
+      passed += 1;
+    } else if (result === false) {
+      li.classList.add('aim-fail');
+    }
   });
+  return { total: items.length, passed };
+}
+
+function pushStatus(message, tone = 'info'){
+  if (!statusEl) {
+    return;
+  }
+  const entry = document.createElement('div');
+  entry.className = `status-entry status-${tone}`;
+  entry.textContent = message;
+  statusEl.appendChild(entry);
+  statusEl.scrollTop = statusEl.scrollHeight;
 }
 
 init();

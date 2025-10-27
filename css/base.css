@@ -6,13 +6,31 @@ body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;background:#f8fafc;c
 .card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin-bottom:12px}
 .row{display:flex;gap:8px;flex-wrap:wrap}
 .btn{display:inline-block;background:#e2e8f0;border:1px solid #94a3b8;border-radius:8px;padding:8px 12px;color:#0f172a;text-decoration:none}
-.grid{display:grid;grid-template-columns:280px 1fr 320px;gap:12px;padding:12px}
+.grid{display:grid;gap:12px;padding:12px}
+@media (min-width:1080px){.grid{grid-template-columns:280px minmax(0,1fr) 320px}}
+@media (max-width:1079px){.grid{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}}
 .pane{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px;min-height:60vh;overflow:auto}
 .stage-wrap{position:relative;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:8px;min-height:60vh}
 .stage{position:relative;background:#f1f5f9;border:1px dashed #cbd5e1;border-radius:10px;min-height:480px;overflow:hidden}
-.log{background:#0b1020;color:#e2e8f0;padding:8px;border-radius:8px;height:200px;overflow:auto}
 .overlay{position:absolute;inset:0;pointer-events:none}
 .aims{background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:8px;margin-bottom:8px}
+.aims ul{margin:8px 0 0;padding-left:18px}
+.aims li{margin-bottom:4px}
+.aims li:last-child{margin-bottom:0}
+.aims li.aim-pass{color:#166534;font-weight:600}
+.aims li.aim-fail{color:#b91c1c;font-weight:600}
+.controls-pane{display:flex;flex-direction:column;gap:16px}
+.status-messages{flex:1;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:8px;min-height:140px;max-height:240px;overflow:auto;font-size:14px;line-height:1.4;color:#0f172a}
+.status-messages:empty::before{content:"Status updates will appear here.";color:#64748b}
+.status-entry{padding:6px 8px;border-radius:6px;margin-bottom:6px}
+.status-entry:last-child{margin-bottom:0}
+.status-entry.status-info{background:#e2e8f0;color:#0f172a}
+.status-entry.status-success{background:#dcfce7;color:#166534}
+.status-entry.status-warn{background:#fef3c7;color:#92400e}
+.status-entry.status-error{background:#fee2e2;color:#b91c1c}
+.controls-stack{display:flex;flex-direction:column;gap:10px}
+.controls-stack button{width:100%;padding:10px;font-size:15px}
+.controls-stack button+button{margin-left:0}
 .stored-scenarios-table{width:100%;border-collapse:collapse;margin-top:12px}
 .stored-scenarios-table th,.stored-scenarios-table td{border:1px solid #e5e7eb;padding:6px 8px;text-align:left;font-size:14px}
 .stored-scenarios-actions{display:flex;gap:8px}
