@@ -95,11 +95,29 @@ function layoutAnchors(){
   if(!root) return;
   const layer = ensureAnchorLayer();
   if(!layer) return;
-  const width = root.clientWidth;
-  const height = root.clientHeight;
+
+  let width = root.clientWidth;
+  let height = root.clientHeight;
+  let offsetLeft = 0;
+  let offsetTop = 0;
+
+  if(backgroundImg){
+    const imgWidth = backgroundImg.offsetWidth || backgroundImg.clientWidth;
+    const imgHeight = backgroundImg.offsetHeight || backgroundImg.clientHeight;
+    if(imgWidth && imgHeight){
+      width = imgWidth;
+      height = imgHeight;
+      offsetLeft = backgroundImg.offsetLeft;
+      offsetTop = backgroundImg.offsetTop;
+    }
+  }
+
   if(!width || !height) return;
+
   layer.style.width = `${width}px`;
   layer.style.height = `${height}px`;
+  layer.style.left = `${offsetLeft}px`;
+  layer.style.top = `${offsetTop}px`;
 
   const anchors = Array.isArray(lastScenario?.anchors) ? lastScenario.anchors : [];
   for(const anchor of anchors){
@@ -107,8 +125,10 @@ function layoutAnchors(){
     const entry = anchorElements.get(anchor.id);
     if(!entry) continue;
     const { x, y } = normToPx(clamp01(anchor.x), clamp01(anchor.y), width, height);
-    entry.x = x;
-    entry.y = y;
+    entry.relativeX = x;
+    entry.relativeY = y;
+    entry.x = x + offsetLeft;
+    entry.y = y + offsetTop;
     entry.element.style.left = `${x}px`;
     entry.element.style.top = `${y}px`;
   }
@@ -126,7 +146,7 @@ function rebuildAnchors(){
     if(typeof anchor.x !== 'number' || typeof anchor.y !== 'number') continue;
     const element = createAnchorElement(anchor);
     if(!element) continue;
-    anchorElements.set(anchor.id, { element, anchor, x: 0, y: 0 });
+    anchorElements.set(anchor.id, { element, anchor, x: 0, y: 0, relativeX: 0, relativeY: 0 });
   }
   layoutAnchors();
 }
