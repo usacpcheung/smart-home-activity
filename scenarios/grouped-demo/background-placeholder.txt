@@ -1,0 +1,2 @@
+Replace me with your background image file (PNG/JPG/SVG) and keep the same name referenced in scenario.json:
+background.png

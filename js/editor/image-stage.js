@@ -1,4 +1,5 @@
 import { qs } from '../core/utils.js';
+import { renderRulesEditor } from './aims-rules.js';
 
 let stageEl = null;
 let anchorLayer = null;
@@ -90,6 +91,7 @@ function onAnchorsPanelChange(evt){
 
   renderAnchors();
   renderAnchorsPanel();
+  renderRulesEditor();
   persistScenarioDraft();
 }
 
@@ -109,6 +111,7 @@ function onAnchorsPanelClick(evt){
   anchors.splice(index, 1);
   renderAnchors();
   renderAnchorsPanel();
+  renderRulesEditor();
   persistScenarioDraft();
 }
 
@@ -427,6 +430,22 @@ export function initStage(state, callbacks = {}){
   }
   else {
     layoutStage();
+  }
+  renderAnchors();
+  renderAnchorsPanel();
+}
+
+export function loadStageFromScenario(){
+  ensureElements();
+  if(!stateRef || !imgEl){
+    return;
+  }
+  const background = stateRef.scenario?.stage?.background || null;
+  const backgroundName = stateRef.scenario?.stage?.backgroundName || '';
+  if(background){
+    applyBackground(background, backgroundName);
+  } else {
+    applyBackground('', '');
   }
   renderAnchors();
   renderAnchorsPanel();

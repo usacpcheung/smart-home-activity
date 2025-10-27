@@ -1,7 +1,9 @@
 import { loadCatalog } from '../core/catalog.js';
-import { saveLocal, loadLocal, downloadJson, pickJsonFile } from '../core/storage.js';
+import { saveLocal, loadLocal } from '../core/storage.js';
 import { qs } from '../core/utils.js';
 import { initStage, renderAnchorsPanel } from './image-stage.js';
+import { initAimsRules, renderRulesEditor } from './aims-rules.js';
+import { initExportImport } from './export-import.js';
 
 const state = {
   catalog: null,
@@ -97,8 +99,9 @@ async function init(){
   persistScenarioDraft();
   state.catalog = await loadCatalog();
   renderCatalog();
-  bindExportImport();
   initStage(state, { persistScenarioDraft });
+  initAimsRules(state, { persistScenarioDraft });
+  initExportImport(state, { hydrateScenario, persistScenarioDraft, renderCatalog });
   // AI TODO:
   // 1) implement image-stage loader (bgUpload → draw in #stage; store stage.background as filename)
   // 2) click-to-add anchors in stage (store normalized coords)
@@ -179,18 +182,6 @@ function renderCatalog(){
   });
 
   renderAnchorsPanel();
-}
-function bindExportImport(){
-  qs('#btnExport').addEventListener('click', ()=>{
-    downloadJson(state.scenario, 'scenario.json');
-  });
-  pickJsonFile(qs('#importJson')).then(json=>{
-    if(!json) return;
-    state.scenario = hydrateScenario(json);
-    persistScenarioDraft();
-    renderCatalog();
-    renderAnchorsPanel();
-    // AI TODO: re-render everything from imported scenario.
-  });
+  renderRulesEditor();
 }
 init();
