@@ -1,21 +1,75 @@
 {
   "schemaVersion": 1,
-  "meta": { "id": "case01", "title": "Step 1 — Hub + Smart Lighting", "author": "Teacher", "createdAt": "2025-10-25T10:00:00Z" },
-  "stage": { "logicalWidth": 1920, "logicalHeight": 1080, "background": "background.png" },
+  "meta": {
+    "id": "case01",
+    "title": "Step 1 \u2014 Hub + Smart Lighting",
+    "author": "Teacher",
+    "createdAt": "2025-10-25T10:00:00Z"
+  },
+  "stage": {
+    "logicalWidth": 1920,
+    "logicalHeight": 1080,
+    "background": "background.png"
+  },
   "devicePool": {
     "catalogSource": "../../data/catalog/devices.json",
-    "allowedDeviceIds": ["voice_assistant","smart_bulb","ambient_light","smart_tv","smart_vacuum"],
-    "distractorIds": ["smart_tv","smart_vacuum"]
+    "allowedDeviceIds": [
+      "voice_assistant",
+      "smart_bulb",
+      "ambient_light",
+      "smart_tv",
+      "smart_vacuum"
+    ]
   },
   "anchors": [
-    { "id": "a1", "label": "Living Room - Table/Shelf",   "type": "table",   "x": 0.40, "y": 0.80, "accepts": ["voice_assistant"], "isDistractor": false },
-    { "id": "a2", "label": "Living Room - Ceiling Mount",  "type": "ceiling", "x": 0.50, "y": 0.15, "accepts": ["smart_bulb"],      "isDistractor": false },
-    { "id": "a3", "label": "Living Room - Wall",           "type": "wall",    "x": 0.80, "y": 0.35, "accepts": ["ambient_light"],   "isDistractor": false },
-    { "id": "a4", "label": "Kitchen - Ceiling",            "type": "ceiling", "x": 0.18, "y": 0.18, "accepts": [],                  "isDistractor": true }
+    {
+      "id": "a1",
+      "label": "Living Room - Table/Shelf",
+      "type": "table",
+      "x": 0.4,
+      "y": 0.8,
+      "accepts": [
+        "voice_assistant"
+      ]
+    },
+    {
+      "id": "a2",
+      "label": "Living Room - Ceiling Mount",
+      "type": "ceiling",
+      "x": 0.5,
+      "y": 0.15,
+      "accepts": [
+        "smart_bulb"
+      ]
+    },
+    {
+      "id": "a3",
+      "label": "Living Room - Wall",
+      "type": "wall",
+      "x": 0.8,
+      "y": 0.35,
+      "accepts": [
+        "ambient_light"
+      ]
+    },
+    {
+      "id": "a4",
+      "label": "Kitchen - Ceiling",
+      "type": "ceiling",
+      "x": 0.18,
+      "y": 0.18,
+      "accepts": []
+    }
   ],
   "aims": [
-    { "id": "aim_voice", "text": "Voice on/off control for the living-room light." },
-    { "id": "aim_auto",  "text": "Auto-on when room brightness drops below a threshold." }
+    {
+      "id": "aim_voice",
+      "text": "Voice on/off control for the living-room light."
+    },
+    {
+      "id": "aim_auto",
+      "text": "Auto-on when room brightness drops below a threshold."
+    }
   ],
   "rules": {
     "requireConnectButton": true,
@@ -23,22 +77,49 @@
       {
         "aimId": "aim_voice",
         "requiredPlacements": [
-          { "deviceId": "voice_assistant", "anchorId": "a1" },
-          { "deviceId": "smart_bulb",      "anchorId": "a2" }
+          {
+            "deviceId": "voice_assistant",
+            "anchorId": "a1"
+          },
+          {
+            "deviceId": "smart_bulb",
+            "anchorId": "a2"
+          }
         ],
         "connectedRequired": true,
-        "simulation": { "type": "voice", "commands": ["turn on the living room light","turn off the living room light"] }
+        "simulation": {
+          "type": "voice",
+          "commands": [
+            "turn on the living room light",
+            "turn off the living room light"
+          ]
+        }
       },
       {
         "aimId": "aim_auto",
         "requiredPlacements": [
-          { "deviceId": "ambient_light", "anchorId": "a3" },
-          { "deviceId": "smart_bulb",    "anchorId": "a2" }
+          {
+            "deviceId": "ambient_light",
+            "anchorId": "a3"
+          },
+          {
+            "deviceId": "smart_bulb",
+            "anchorId": "a2"
+          }
         ],
         "connectedRequired": true,
-        "simulation": { "type": "lux", "threshold": 200 }
+        "simulation": {
+          "type": "lux",
+          "threshold": 200
+        }
       }
     ]
   },
-  "animations": { "success": { "aim_voice": "voiceGlow", "aim_auto": "darkThenOn" }, "fail": "redBlink" }
+  "animations": {
+    "success": {
+      "aim_voice": "voiceGlow",
+      "aim_auto": "darkThenOn"
+    },
+    "fail": "redBlink"
+  }
 }
