@@ -1,0 +1,140 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "id": "grouped-demo",
+    "title": "Grouped Rule Logic Demo",
+    "author": "Teacher",
+    "createdAt": "2025-10-25T12:00:00Z"
+  },
+  "stage": {
+    "logicalWidth": 1920,
+    "logicalHeight": 1080,
+    "background": "background.png"
+  },
+  "devicePool": {
+    "catalogSource": "../../data/catalog/devices.json",
+    "allowedDeviceIds": [
+      "voice_assistant",
+      "smart_bulb",
+      "wall_switch",
+      "motion_sensor",
+      "smart_plug",
+      "door_sensor",
+      "power_strip"
+    ]
+  },
+  "anchors": [
+    {
+      "id": "a1",
+      "label": "Console Table",
+      "type": "table",
+      "x": 0.25,
+      "y": 0.78,
+      "accepts": ["voice_assistant", "power_strip"]
+    },
+    {
+      "id": "a2",
+      "label": "Ceiling Light",
+      "type": "ceiling",
+      "x": 0.5,
+      "y": 0.2,
+      "accepts": ["smart_bulb"]
+    },
+    {
+      "id": "a3",
+      "label": "Wall Switch",
+      "type": "wall",
+      "x": 0.72,
+      "y": 0.5,
+      "accepts": ["wall_switch"]
+    },
+    {
+      "id": "a4",
+      "label": "Entry Corner",
+      "type": "wall",
+      "x": 0.18,
+      "y": 0.35,
+      "accepts": ["motion_sensor"]
+    },
+    {
+      "id": "a5",
+      "label": "Living Room Outlet",
+      "type": "wall",
+      "x": 0.38,
+      "y": 0.82,
+      "accepts": ["smart_plug", "power_strip"]
+    },
+    {
+      "id": "a6",
+      "label": "Patio Door Frame",
+      "type": "door",
+      "x": 0.86,
+      "y": 0.42,
+      "accepts": ["door_sensor"]
+    }
+  ],
+  "aims": [
+    {
+      "id": "aim_combined",
+      "text": "Place the assistant plus either the smart bulb or the wall switch."
+    },
+    {
+      "id": "aim_sensor_mix",
+      "text": "Automate lights with one of two sensor + power combinations."
+    }
+  ],
+  "rules": {
+    "requireConnectButton": true,
+    "checks": [
+      {
+        "aimId": "aim_combined",
+        "connectedRequired": true,
+        "expression": {
+          "type": "group",
+          "operator": "and",
+          "children": [
+            { "type": "clause", "deviceId": "voice_assistant", "anchorId": "a1" },
+            {
+              "type": "group",
+              "operator": "or",
+              "children": [
+                { "type": "clause", "deviceId": "smart_bulb", "anchorId": "a2" },
+                { "type": "clause", "deviceId": "wall_switch", "anchorId": "a3" }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "aimId": "aim_sensor_mix",
+        "connectedRequired": false,
+        "expression": {
+          "type": "group",
+          "operator": "or",
+          "children": [
+            {
+              "type": "group",
+              "operator": "and",
+              "children": [
+                { "type": "clause", "deviceId": "motion_sensor", "anchorId": "a4" },
+                { "type": "clause", "deviceId": "smart_plug", "anchorId": "a5" }
+              ]
+            },
+            {
+              "type": "group",
+              "operator": "and",
+              "children": [
+                { "type": "clause", "deviceId": "door_sensor", "anchorId": "a6" },
+                { "type": "clause", "deviceId": "power_strip", "anchorId": "a1" }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "animations": {
+    "success": {},
+    "fail": "redBlink"
+  }
+}
