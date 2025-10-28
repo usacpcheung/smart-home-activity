@@ -224,9 +224,9 @@ function bindStageInteractions() {
 function bindDeviceCardInteractions(card, device) {
   card.draggable = true;
 
-  const selectDevice = () => {
+  const selectDevice = ({ fromKeyboard = false } = {}) => {
     const alreadySelected = state.pendingDeviceId === device.id;
-    if (!alreadySelected) {
+    if (fromKeyboard && !alreadySelected) {
       ensureStageVisibility();
     }
     setPendingDevice(alreadySelected ? null : device.id);
@@ -239,12 +239,11 @@ function bindDeviceCardInteractions(card, device) {
   card.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      selectDevice();
+      selectDevice({ fromKeyboard: true });
     }
   });
 
   card.addEventListener('dragstart', (event) => {
-    ensureStageVisibility();
     setPendingDevice(device.id);
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = 'copy';
