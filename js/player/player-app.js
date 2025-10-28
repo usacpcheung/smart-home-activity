@@ -2,7 +2,7 @@ import { loadCatalog } from '../core/catalog.js';
 import { evaluate } from '../core/engine.js';
 import { validateRulesStructure } from '../core/rules.js';
 import { qs } from '../core/utils.js';
-import { renderStage as renderStageView } from './stage-runtime.js';
+import { renderStage as renderStageView, refreshAnchorFeedback, setAnchorFeedbackEvaluator, syncAnchorPlacements } from './stage-runtime.js';
 
 const STORED_SCENARIOS_KEY = 'uploadedScenarios';
 const DEFAULT_SCENARIO_URL = 'scenarios/case01/scenario.json';
@@ -12,10 +12,252 @@ const state = {
   scenario: null,
   catalog: null,
   placements: [],
+  pendingDeviceId: null,
   connected: false,
   scenarioUrl: '',
   scenarioBase: ''
 };
+
+const boundAnchorElements = new WeakSet();
+
+function ensureStageVisibility() {
+  const stage = qs('#playerStage');
+  if (stage?.scrollIntoView) {
+    stage.scrollIntoView({ block: 'center', behavior: 'instant' });
+  }
+}
+
+function setPendingDevice(deviceId) {
+  state.pendingDeviceId = typeof deviceId === 'string' && deviceId ? deviceId : null;
+  document.querySelectorAll('.device-card--pending').forEach((el) => {
+    el.classList.remove('device-card--pending');
+    el.removeAttribute('aria-current');
+  });
+  if (state.pendingDeviceId) {
+    const cards = document.querySelectorAll('.device-card');
+    cards.forEach((card) => {
+      if (card.dataset.deviceId === state.pendingDeviceId) {
+        card.classList.add('device-card--pending');
+        card.setAttribute('aria-current', 'true');
+      }
+    });
+  }
+  refreshAnchorFeedback();
+}
+
+function getDeviceMeta(deviceId) {
+  if (!state.catalog) {
+    return null;
+  }
+  for (const category of state.catalog.categories || []) {
+    const match = category.devices?.find?.((device) => device.id === deviceId);
+    if (match) {
+      return match;
+    }
+  }
+  return null;
+}
+
+function findAnchor(anchorId) {
+  return (state.scenario?.anchors || []).find((anchor) => anchor.id === anchorId) || null;
+}
+
+function formatPlacementNames(deviceId, anchorId) {
+  const device = getDeviceMeta(deviceId);
+  const anchor = findAnchor(anchorId);
+  const deviceName = device?.name || deviceId || 'device';
+  const anchorName = anchor?.label || anchor?.id || 'anchor';
+  return { deviceName, anchorName };
+}
+
+function evaluatePlacementAllowance(anchorId) {
+  if (!state.pendingDeviceId) {
+    return null;
+  }
+  const deviceId = state.pendingDeviceId;
+  const anchor = findAnchor(anchorId);
+  if (!anchor) {
+    return { allowed: false };
+  }
+
+  const accepts = Array.isArray(anchor.accepts) ? anchor.accepts : [];
+  if (accepts.length && !accepts.includes(deviceId)) {
+    return { allowed: false };
+  }
+
+  const placementsForAnchor = state.placements.filter((entry) => entry.anchorId === anchorId);
+  if (placementsForAnchor.length >= 4) {
+    return { allowed: false };
+  }
+
+  if (placementsForAnchor.some((entry) => entry.deviceId === deviceId)) {
+    return { allowed: false };
+  }
+
+  return { allowed: true };
+}
+
+function updateStagePlacements() {
+  const enriched = state.placements.map((placement) => {
+    const names = formatPlacementNames(placement.deviceId, placement.anchorId);
+    const device = getDeviceMeta(placement.deviceId);
+    const iconId = device?.icon ? String(device.icon).trim() : '';
+    const iconUrl = iconId ? `assets/device-icons/${iconId}.png` : '';
+    const fallbackLabelSource = names.deviceName || placement.deviceId || '';
+    const fallbackLabel = fallbackLabelSource
+      ? fallbackLabelSource.trim().charAt(0).toUpperCase()
+      : '';
+    return {
+      ...placement,
+      deviceName: names.deviceName,
+      anchorName: names.anchorName,
+      deviceIconId: iconId || null,
+      deviceIconUrl: iconUrl || null,
+      deviceFallbackLabel: fallbackLabel || null
+    };
+  });
+
+  syncAnchorPlacements(enriched, {
+    onRemove: ({ deviceId, anchorId }) => removePlacement(deviceId, anchorId)
+  });
+
+  refreshAnchorFeedback();
+}
+
+function removePlacement(deviceId, anchorId) {
+  const index = state.placements.findIndex(
+    (entry) => entry.deviceId === deviceId && entry.anchorId === anchorId
+  );
+  if (index === -1) {
+    return;
+  }
+
+  state.placements.splice(index, 1);
+  const { deviceName, anchorName } = formatPlacementNames(deviceId, anchorId);
+  pushStatus(`Removed ${deviceName} from ${anchorName}.`, 'info');
+  updateStagePlacements();
+}
+
+function attemptPlacement(deviceId, anchorId) {
+  if (!deviceId) {
+    pushStatus('Select a device before choosing an anchor.', 'warn');
+    return false;
+  }
+  if (!anchorId) {
+    pushStatus('Anchor not recognized for placement.', 'error');
+    return false;
+  }
+  const anchor = findAnchor(anchorId);
+  if (!anchor) {
+    pushStatus('Anchor not recognized for placement.', 'error');
+    return false;
+  }
+
+  const accepts = Array.isArray(anchor.accepts) ? anchor.accepts : [];
+  if (accepts.length && !accepts.includes(deviceId)) {
+    const { deviceName, anchorName } = formatPlacementNames(deviceId, anchorId);
+    pushStatus(`${deviceName} cannot be placed at ${anchorName}.`, 'warn');
+    return false;
+  }
+
+  const placementsForAnchor = state.placements.filter((entry) => entry.anchorId === anchorId);
+  if (placementsForAnchor.length >= 4) {
+    const { anchorName } = formatPlacementNames(deviceId, anchorId);
+    pushStatus(`${anchorName} already has four devices placed.`, 'warn');
+    return false;
+  }
+
+  const existing = placementsForAnchor.find((entry) => entry.deviceId === deviceId);
+  if (existing) {
+    const { deviceName, anchorName } = formatPlacementNames(deviceId, anchorId);
+    pushStatus(`${deviceName} is already placed at ${anchorName}.`, 'info');
+    return false;
+  }
+
+  state.placements.push({ deviceId, anchorId });
+  const { deviceName, anchorName } = formatPlacementNames(deviceId, anchorId);
+  pushStatus(`Placed ${deviceName} at ${anchorName}.`, 'success');
+  updateStagePlacements();
+  return true;
+}
+
+function bindStageInteractions() {
+  const anchors = document.querySelectorAll('.anchor-hit');
+  anchors.forEach((anchorEl) => {
+    if (boundAnchorElements.has(anchorEl)) {
+      return;
+    }
+    boundAnchorElements.add(anchorEl);
+
+    anchorEl.addEventListener('drop', (event) => {
+      event.preventDefault();
+      const deviceId = event.dataTransfer?.getData('application/x-device-id') || event.dataTransfer?.getData('text/plain') || state.pendingDeviceId;
+      const anchorId = anchorEl.dataset.anchorId;
+      attemptPlacement(deviceId, anchorId);
+      setPendingDevice(null);
+    });
+
+    anchorEl.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') {
+        return;
+      }
+      if (!state.pendingDeviceId) {
+        return;
+      }
+      event.preventDefault();
+      const anchorId = anchorEl.dataset.anchorId;
+      attemptPlacement(state.pendingDeviceId, anchorId);
+      setPendingDevice(null);
+    });
+
+    anchorEl.addEventListener('click', () => {
+      if (!state.pendingDeviceId) {
+        return;
+      }
+      const anchorId = anchorEl.dataset.anchorId;
+      attemptPlacement(state.pendingDeviceId, anchorId);
+      setPendingDevice(null);
+    });
+  });
+}
+
+function bindDeviceCardInteractions(card, device) {
+  card.draggable = true;
+
+  const selectDevice = ({ fromKeyboard = false } = {}) => {
+    const alreadySelected = state.pendingDeviceId === device.id;
+    if (fromKeyboard && !alreadySelected) {
+      ensureStageVisibility();
+    }
+    setPendingDevice(alreadySelected ? null : device.id);
+  };
+
+  card.addEventListener('click', () => {
+    selectDevice();
+  });
+
+  card.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      selectDevice({ fromKeyboard: true });
+    }
+  });
+
+  card.addEventListener('dragstart', (event) => {
+    setPendingDevice(device.id);
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'copy';
+      event.dataTransfer.setData('application/x-device-id', device.id);
+      event.dataTransfer.setData('text/plain', device.id);
+    }
+    card.classList.add('device-card--dragging');
+  });
+
+  card.addEventListener('dragend', () => {
+    card.classList.remove('device-card--dragging');
+    setPendingDevice(null);
+  });
+}
 
 async function init(){
   const params = new URL(location.href).searchParams;
@@ -58,7 +300,15 @@ async function init(){
 
   const catalogSource = state.scenario?.devicePool?.catalogSource || 'data/catalog/devices.json';
   state.catalog = await loadCatalog(catalogSource);
-  renderAims(); renderDeviceList(); renderStageView(state.scenario); bindUI();
+  state.placements = [];
+  setPendingDevice(null);
+  renderAims();
+  renderDeviceList();
+  renderStageView(state.scenario);
+  setAnchorFeedbackEvaluator(evaluatePlacementAllowance);
+  updateStagePlacements();
+  bindStageInteractions();
+  bindUI();
   pushStatus('Scenario loaded: ' + (state.scenario?.meta?.title || 'untitled'));
 }
 
@@ -71,8 +321,10 @@ function renderAims(){
 }
 
 function renderDeviceList(){
-  const allowed = new Set(state.scenario.devicePool.allowedDeviceIds || []);
+  const allowedIds = state.scenario?.devicePool?.allowedDeviceIds || [];
+  const allowed = new Set(allowedIds);
   const list = qs('#deviceList'); list.innerHTML = '';
+  setPendingDevice(null);
   state.catalog.categories.forEach(cat=>{
     const group = cat.devices.filter(d=>allowed.has(d.id));
     if(!group.length) return;
@@ -106,7 +358,7 @@ function renderDeviceList(){
       label.textContent = d.name;
 
       card.append(icon, label);
-      // AI TODO: add dragstart handlers or “Place here” keyboard flow.
+      bindDeviceCardInteractions(card, d);
       list.appendChild(card);
     });
   });
