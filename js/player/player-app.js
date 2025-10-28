@@ -12,10 +12,182 @@ const state = {
   scenario: null,
   catalog: null,
   placements: [],
+  pendingDeviceId: null,
   connected: false,
   scenarioUrl: '',
   scenarioBase: ''
 };
+
+const boundAnchorElements = new WeakSet();
+
+function setPendingDevice(deviceId) {
+  state.pendingDeviceId = typeof deviceId === 'string' && deviceId ? deviceId : null;
+  document.querySelectorAll('.device-card--pending').forEach((el) => {
+    el.classList.remove('device-card--pending');
+    el.removeAttribute('aria-current');
+  });
+  if (state.pendingDeviceId) {
+    const cards = document.querySelectorAll('.device-card');
+    cards.forEach((card) => {
+      if (card.dataset.deviceId === state.pendingDeviceId) {
+        card.classList.add('device-card--pending');
+        card.setAttribute('aria-current', 'true');
+      }
+    });
+  }
+}
+
+function getDeviceMeta(deviceId) {
+  if (!state.catalog) {
+    return null;
+  }
+  for (const category of state.catalog.categories || []) {
+    const match = category.devices?.find?.((device) => device.id === deviceId);
+    if (match) {
+      return match;
+    }
+  }
+  return null;
+}
+
+function findAnchor(anchorId) {
+  return (state.scenario?.anchors || []).find((anchor) => anchor.id === anchorId) || null;
+}
+
+function formatPlacementNames(deviceId, anchorId) {
+  const device = getDeviceMeta(deviceId);
+  const anchor = findAnchor(anchorId);
+  const deviceName = device?.name || deviceId || 'device';
+  const anchorName = anchor?.label || anchor?.id || 'anchor';
+  return { deviceName, anchorName };
+}
+
+function attemptPlacement(deviceId, anchorId) {
+  if (!deviceId) {
+    pushStatus('Select a device before choosing an anchor.', 'warn');
+    return false;
+  }
+  if (!anchorId) {
+    pushStatus('Anchor not recognized for placement.', 'error');
+    return false;
+  }
+  const anchor = findAnchor(anchorId);
+  if (!anchor) {
+    pushStatus('Anchor not recognized for placement.', 'error');
+    return false;
+  }
+
+  const accepts = Array.isArray(anchor.accepts) ? anchor.accepts : [];
+  if (accepts.length && !accepts.includes(deviceId)) {
+    const { deviceName, anchorName } = formatPlacementNames(deviceId, anchorId);
+    pushStatus(`${deviceName} cannot be placed at ${anchorName}.`, 'warn');
+    return false;
+  }
+
+  const placementsForAnchor = state.placements.filter((entry) => entry.anchorId === anchorId);
+  if (placementsForAnchor.length >= 4) {
+    const { anchorName } = formatPlacementNames(deviceId, anchorId);
+    pushStatus(`${anchorName} already has four devices placed.`, 'warn');
+    return false;
+  }
+
+  const existing = placementsForAnchor.find((entry) => entry.deviceId === deviceId);
+  if (existing) {
+    const { deviceName, anchorName } = formatPlacementNames(deviceId, anchorId);
+    pushStatus(`${deviceName} is already placed at ${anchorName}.`, 'info');
+    return false;
+  }
+
+  state.placements.push({ deviceId, anchorId });
+  const { deviceName, anchorName } = formatPlacementNames(deviceId, anchorId);
+  pushStatus(`Placed ${deviceName} at ${anchorName}.`, 'success');
+  return true;
+}
+
+function bindStageInteractions() {
+  const anchors = document.querySelectorAll('.anchor-hit');
+  anchors.forEach((anchorEl) => {
+    if (boundAnchorElements.has(anchorEl)) {
+      return;
+    }
+    boundAnchorElements.add(anchorEl);
+
+    anchorEl.addEventListener('dragover', (event) => {
+      if (!state.pendingDeviceId) {
+        return;
+      }
+      event.preventDefault();
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = 'copy';
+      }
+    });
+
+    anchorEl.addEventListener('drop', (event) => {
+      event.preventDefault();
+      const deviceId = event.dataTransfer?.getData('application/x-device-id') || event.dataTransfer?.getData('text/plain') || state.pendingDeviceId;
+      const anchorId = anchorEl.dataset.anchorId;
+      attemptPlacement(deviceId, anchorId);
+      setPendingDevice(null);
+    });
+
+    anchorEl.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') {
+        return;
+      }
+      if (!state.pendingDeviceId) {
+        return;
+      }
+      event.preventDefault();
+      const anchorId = anchorEl.dataset.anchorId;
+      attemptPlacement(state.pendingDeviceId, anchorId);
+      setPendingDevice(null);
+    });
+
+    anchorEl.addEventListener('click', () => {
+      if (!state.pendingDeviceId) {
+        return;
+      }
+      const anchorId = anchorEl.dataset.anchorId;
+      attemptPlacement(state.pendingDeviceId, anchorId);
+      setPendingDevice(null);
+    });
+  });
+}
+
+function bindDeviceCardInteractions(card, device) {
+  card.draggable = true;
+
+  const selectDevice = () => {
+    const alreadySelected = state.pendingDeviceId === device.id;
+    setPendingDevice(alreadySelected ? null : device.id);
+  };
+
+  card.addEventListener('click', () => {
+    selectDevice();
+  });
+
+  card.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      selectDevice();
+    }
+  });
+
+  card.addEventListener('dragstart', (event) => {
+    setPendingDevice(device.id);
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'copy';
+      event.dataTransfer.setData('application/x-device-id', device.id);
+      event.dataTransfer.setData('text/plain', device.id);
+    }
+    card.classList.add('device-card--dragging');
+  });
+
+  card.addEventListener('dragend', () => {
+    card.classList.remove('device-card--dragging');
+    setPendingDevice(null);
+  });
+}
 
 async function init(){
   const params = new URL(location.href).searchParams;
@@ -58,7 +230,9 @@ async function init(){
 
   const catalogSource = state.scenario?.devicePool?.catalogSource || 'data/catalog/devices.json';
   state.catalog = await loadCatalog(catalogSource);
-  renderAims(); renderDeviceList(); renderStageView(state.scenario); bindUI();
+  state.placements = [];
+  setPendingDevice(null);
+  renderAims(); renderDeviceList(); renderStageView(state.scenario); bindStageInteractions(); bindUI();
   pushStatus('Scenario loaded: ' + (state.scenario?.meta?.title || 'untitled'));
 }
 
@@ -71,8 +245,10 @@ function renderAims(){
 }
 
 function renderDeviceList(){
-  const allowed = new Set(state.scenario.devicePool.allowedDeviceIds || []);
+  const allowedIds = state.scenario?.devicePool?.allowedDeviceIds || [];
+  const allowed = new Set(allowedIds);
   const list = qs('#deviceList'); list.innerHTML = '';
+  setPendingDevice(null);
   state.catalog.categories.forEach(cat=>{
     const group = cat.devices.filter(d=>allowed.has(d.id));
     if(!group.length) return;
@@ -106,7 +282,7 @@ function renderDeviceList(){
       label.textContent = d.name;
 
       card.append(icon, label);
-      // AI TODO: add dragstart handlers or “Place here” keyboard flow.
+      bindDeviceCardInteractions(card, d);
       list.appendChild(card);
     });
   });
