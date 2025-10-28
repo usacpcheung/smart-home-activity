@@ -165,42 +165,105 @@ function positionPlacementBadges(entry, stageMetrics = lastStageMetrics){
   const stageWidth = stageRect?.width || metrics.width || 0;
   const stageHeight = stageRect?.height || metrics.height || 0;
   const stagePadding = Number.isFinite(metrics.padding) ? metrics.padding : 0;
-  badges.forEach((badge, index) => {
+  const anchorX = entry.relativeX ?? 0;
+  const anchorY = entry.relativeY ?? 0;
+
+  let clusterShiftX = 0;
+  let clusterShiftY = 0;
+
+  const badgeMetrics = badges.map((badge, index) => {
     const baseOffset = offsets[index] || offsets[offsets.length - 1] || { x: 0, y: 0 };
-    let offsetX = baseOffset.x;
-    let offsetY = baseOffset.y;
+    const badgeRect = badge.getBoundingClientRect();
+    const width = badgeRect?.width || badge.offsetWidth || badge.clientWidth || 64;
+    const height = badgeRect?.height || badge.offsetHeight || badge.clientHeight || 64;
+    const halfWidth = width / 2;
+    const halfHeight = height / 2;
+    const centerX = anchorX + baseOffset.x;
+    const centerY = anchorY + baseOffset.y;
+    return {
+      badge,
+      baseOffset,
+      width,
+      height,
+      halfWidth,
+      halfHeight,
+      centerX,
+      centerY
+    };
+  });
 
-    if(stageWidth && stageHeight){
-      const badgeRect = badge.getBoundingClientRect();
-      const badgeWidth = badgeRect?.width || badge.offsetWidth || badge.clientWidth || 64;
-      const badgeHeight = badgeRect?.height || badge.offsetHeight || badge.clientHeight || 64;
-      const halfWidth = badgeWidth / 2;
-      const halfHeight = badgeHeight / 2;
-      const minX = stagePadding + halfWidth;
-      const maxX = stageWidth - stagePadding - halfWidth;
-      const minY = stagePadding + halfHeight;
-      const maxY = stageHeight - stagePadding - halfHeight;
-      const anchorX = entry.relativeX ?? 0;
-      const anchorY = entry.relativeY ?? 0;
-      let targetX = anchorX + offsetX;
-      let targetY = anchorY + offsetY;
+  if(stageWidth && stageHeight && badgeMetrics.length){
+    const stageMinX = stagePadding;
+    const stageMaxX = stageWidth - stagePadding;
+    const stageMinY = stagePadding;
+    const stageMaxY = stageHeight - stagePadding;
 
-      if(targetX < minX){
-        offsetX += (minX - targetX);
-      } else if(targetX > maxX){
-        offsetX -= (targetX - maxX);
-      }
+    let clusterMinX = Infinity;
+    let clusterMaxX = -Infinity;
+    let clusterMinY = Infinity;
+    let clusterMaxY = -Infinity;
 
-      if(targetY < minY){
-        offsetY += (minY - targetY);
-      } else if(targetY > maxY){
-        offsetY -= (targetY - maxY);
-      }
+    for(const metric of badgeMetrics){
+      const minX = metric.centerX - metric.halfWidth;
+      const maxX = metric.centerX + metric.halfWidth;
+      const minY = metric.centerY - metric.halfHeight;
+      const maxY = metric.centerY + metric.halfHeight;
+      if(minX < clusterMinX) clusterMinX = minX;
+      if(maxX > clusterMaxX) clusterMaxX = maxX;
+      if(minY < clusterMinY) clusterMinY = minY;
+      if(maxY > clusterMaxY) clusterMaxY = maxY;
     }
 
-    badge.style.setProperty('--badge-offset-x', `${offsetX}px`);
-    badge.style.setProperty('--badge-offset-y', `${offsetY}px`);
-  });
+    const clusterWidth = clusterMaxX - clusterMinX;
+    const clusterHeight = clusterMaxY - clusterMinY;
+    const stageWidthAvailable = stageMaxX - stageMinX;
+    const stageHeightAvailable = stageMaxY - stageMinY;
+
+    if(clusterWidth <= stageWidthAvailable){
+      if(clusterMinX < stageMinX){
+        clusterShiftX = stageMinX - clusterMinX;
+      }
+      if(clusterMaxX + clusterShiftX > stageMaxX){
+        clusterShiftX += stageMaxX - (clusterMaxX + clusterShiftX);
+      }
+      if(clusterMinX + clusterShiftX < stageMinX){
+        clusterShiftX += stageMinX - (clusterMinX + clusterShiftX);
+      }
+      if(clusterMaxX + clusterShiftX > stageMaxX){
+        clusterShiftX += stageMaxX - (clusterMaxX + clusterShiftX);
+      }
+    } else {
+      const clusterCenterX = (clusterMinX + clusterMaxX) / 2;
+      const stageCenterX = (stageMinX + stageMaxX) / 2;
+      clusterShiftX = stageCenterX - clusterCenterX;
+    }
+
+    if(clusterHeight <= stageHeightAvailable){
+      if(clusterMinY < stageMinY){
+        clusterShiftY = stageMinY - clusterMinY;
+      }
+      if(clusterMaxY + clusterShiftY > stageMaxY){
+        clusterShiftY += stageMaxY - (clusterMaxY + clusterShiftY);
+      }
+      if(clusterMinY + clusterShiftY < stageMinY){
+        clusterShiftY += stageMinY - (clusterMinY + clusterShiftY);
+      }
+      if(clusterMaxY + clusterShiftY > stageMaxY){
+        clusterShiftY += stageMaxY - (clusterMaxY + clusterShiftY);
+      }
+    } else {
+      const clusterCenterY = (clusterMinY + clusterMaxY) / 2;
+      const stageCenterY = (stageMinY + stageMaxY) / 2;
+      clusterShiftY = stageCenterY - clusterCenterY;
+    }
+  }
+
+  for(const metric of badgeMetrics){
+    const offsetX = metric.baseOffset.x + clusterShiftX;
+    const offsetY = metric.baseOffset.y + clusterShiftY;
+    metric.badge.style.setProperty('--badge-offset-x', `${offsetX}px`);
+    metric.badge.style.setProperty('--badge-offset-y', `${offsetY}px`);
+  }
 }
 
 function layoutAnchors(){
