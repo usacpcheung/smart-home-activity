@@ -107,7 +107,6 @@ function createAnchorElement(anchor){
 
   if(labelText){
     root.setAttribute('aria-label', labelText);
-    root.title = labelText;
   }
 
   root.tabIndex = 0;

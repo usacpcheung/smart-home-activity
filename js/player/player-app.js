@@ -20,6 +20,55 @@ const state = {
 
 const boundAnchorElements = new WeakSet();
 
+const AudioContextCtor = typeof globalThis !== 'undefined'
+  ? (globalThis.AudioContext || globalThis.webkitAudioContext || null)
+  : null;
+let placementAudioContext = null;
+
+function ensurePlacementAudioContext() {
+  if (!AudioContextCtor) {
+    return null;
+  }
+  if (!placementAudioContext) {
+    placementAudioContext = new AudioContextCtor();
+  }
+  if (placementAudioContext.state === 'suspended') {
+    placementAudioContext.resume().catch(() => {});
+  }
+  return placementAudioContext;
+}
+
+function playPlacementSound() {
+  const ctx = ensurePlacementAudioContext();
+  if (!ctx) {
+    return;
+  }
+
+  const startTime = ctx.currentTime;
+  const duration = 0.25;
+
+  const oscillator = ctx.createOscillator();
+  oscillator.type = 'triangle';
+  oscillator.frequency.setValueAtTime(660, startTime);
+  oscillator.frequency.exponentialRampToValueAtTime(880, startTime + duration);
+
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, startTime);
+  gain.gain.exponentialRampToValueAtTime(0.4, startTime + 0.03);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+
+  oscillator.connect(gain);
+  gain.connect(ctx.destination);
+
+  oscillator.onended = () => {
+    oscillator.disconnect();
+    gain.disconnect();
+  };
+
+  oscillator.start(startTime);
+  oscillator.stop(startTime + duration);
+}
+
 function ensureStageVisibility() {
   const stage = qs('#playerStage');
   if (stage?.scrollIntoView) {
@@ -177,6 +226,7 @@ function attemptPlacement(deviceId, anchorId) {
   state.placements.push({ deviceId, anchorId });
   const { deviceName, anchorName } = formatPlacementNames(deviceId, anchorId);
   pushStatus(`Placed ${deviceName} at ${anchorName}.`, 'success');
+  playPlacementSound();
   updateStagePlacements();
   return true;
 }
