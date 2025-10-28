@@ -93,10 +93,20 @@ function evaluatePlacementAllowance(anchorId) {
 function updateStagePlacements() {
   const enriched = state.placements.map((placement) => {
     const names = formatPlacementNames(placement.deviceId, placement.anchorId);
+    const device = getDeviceMeta(placement.deviceId);
+    const iconId = device?.icon ? String(device.icon).trim() : '';
+    const iconUrl = iconId ? `assets/device-icons/${iconId}.png` : '';
+    const fallbackLabelSource = names.deviceName || placement.deviceId || '';
+    const fallbackLabel = fallbackLabelSource
+      ? fallbackLabelSource.trim().charAt(0).toUpperCase()
+      : '';
     return {
       ...placement,
       deviceName: names.deviceName,
-      anchorName: names.anchorName
+      anchorName: names.anchorName,
+      deviceIconId: iconId || null,
+      deviceIconUrl: iconUrl || null,
+      deviceFallbackLabel: fallbackLabel || null
     };
   });
 

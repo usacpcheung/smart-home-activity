@@ -389,13 +389,41 @@ export function syncAnchorPlacements(placements, options = {}){
         badge.dataset.deviceId = placement.deviceId;
       }
       const deviceLabel = placement.deviceName || placement.deviceId || 'Device';
-      badge.textContent = deviceLabel;
       const anchorLabel = placement.anchorName || entry.anchor.label || entry.anchor.id || '';
       const accessibleLabel = anchorLabel
         ? `Remove ${deviceLabel} from ${anchorLabel}`
         : `Remove ${deviceLabel}`;
       badge.setAttribute('aria-label', accessibleLabel);
       badge.title = accessibleLabel;
+
+      const fallbackLabel = placement.deviceFallbackLabel || (deviceLabel ? deviceLabel.trim().charAt(0).toUpperCase() : '');
+
+      const renderFallback = () => {
+        if(badge.querySelector('.anchor-hit__badge-fallback')){
+          return;
+        }
+        const fallback = document.createElement('span');
+        fallback.className = 'anchor-hit__badge-fallback';
+        fallback.textContent = fallbackLabel || '?';
+        badge.classList.add('anchor-hit__badge--fallback');
+        badge.appendChild(fallback);
+      };
+
+      if(placement.deviceIconUrl){
+        const icon = document.createElement('img');
+        icon.className = 'anchor-hit__badge-icon';
+        icon.src = placement.deviceIconUrl;
+        icon.alt = '';
+        icon.setAttribute('aria-hidden', 'true');
+        icon.loading = 'lazy';
+        icon.addEventListener('error', () => {
+          icon.remove();
+          renderFallback();
+        }, { once: true });
+        badge.appendChild(icon);
+      } else {
+        renderFallback();
+      }
 
       const invokeRemove = () => {
         if(typeof removePlacementHandler === 'function'){
@@ -415,6 +443,10 @@ export function syncAnchorPlacements(placements, options = {}){
           invokeRemove();
         }
       });
+
+      if(!badge.querySelector('.anchor-hit__badge-icon')){
+        renderFallback();
+      }
 
       container.appendChild(badge);
     }
