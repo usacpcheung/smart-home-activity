@@ -155,16 +155,41 @@ function computeBadgeOffsets(count){
   return layout.slice(0, capped);
 }
 
-function positionPlacementBadges(entry, stageMetrics = lastStageMetrics){
+function deriveStageBounds(metrics){
+  const data = metrics || {};
+  const rect = data.rect;
+  const width = rect?.width || data.width || 0;
+  const height = rect?.height || data.height || 0;
+  if(!width || !height){
+    return null;
+  }
+  const padding = Number.isFinite(data.padding) ? data.padding : 0;
+  return {
+    minX: padding,
+    minY: padding,
+    maxX: width - padding,
+    maxY: height - padding,
+    width,
+    height,
+    padding
+  };
+}
+
+function positionPlacementBadges(entry, stageMetrics = lastStageMetrics, options = {}){
   const container = entry?.placementContainer;
-  if(!container) return;
+  if(!container) return null;
   const badges = Array.from(container.children);
+  if(!badges.length){
+    return null;
+  }
+
+  const { extraShift } = options;
+  const applyStyles = options.applyStyles !== false;
+  const extraShiftX = extraShift?.x ?? 0;
+  const extraShiftY = extraShift?.y ?? 0;
+
   const offsets = computeBadgeOffsets(badges.length);
-  const metrics = stageMetrics || {};
-  const stageRect = metrics.rect;
-  const stageWidth = stageRect?.width || metrics.width || 0;
-  const stageHeight = stageRect?.height || metrics.height || 0;
-  const stagePadding = Number.isFinite(metrics.padding) ? metrics.padding : 0;
+  const bounds = deriveStageBounds(stageMetrics);
   const anchorX = entry.relativeX ?? 0;
   const anchorY = entry.relativeY ?? 0;
 
@@ -192,12 +217,7 @@ function positionPlacementBadges(entry, stageMetrics = lastStageMetrics){
     };
   });
 
-  if(stageWidth && stageHeight && badgeMetrics.length){
-    const stageMinX = stagePadding;
-    const stageMaxX = stageWidth - stagePadding;
-    const stageMinY = stagePadding;
-    const stageMaxY = stageHeight - stagePadding;
-
+  if(bounds){
     let clusterMinX = Infinity;
     let clusterMaxX = -Infinity;
     let clusterMinY = Infinity;
@@ -216,53 +236,262 @@ function positionPlacementBadges(entry, stageMetrics = lastStageMetrics){
 
     const clusterWidth = clusterMaxX - clusterMinX;
     const clusterHeight = clusterMaxY - clusterMinY;
-    const stageWidthAvailable = stageMaxX - stageMinX;
-    const stageHeightAvailable = stageMaxY - stageMinY;
+    const stageWidthAvailable = bounds.maxX - bounds.minX;
+    const stageHeightAvailable = bounds.maxY - bounds.minY;
 
     if(clusterWidth <= stageWidthAvailable){
-      if(clusterMinX < stageMinX){
-        clusterShiftX = stageMinX - clusterMinX;
+      if(clusterMinX < bounds.minX){
+        clusterShiftX = bounds.minX - clusterMinX;
       }
-      if(clusterMaxX + clusterShiftX > stageMaxX){
-        clusterShiftX += stageMaxX - (clusterMaxX + clusterShiftX);
+      if(clusterMaxX + clusterShiftX > bounds.maxX){
+        clusterShiftX += bounds.maxX - (clusterMaxX + clusterShiftX);
       }
-      if(clusterMinX + clusterShiftX < stageMinX){
-        clusterShiftX += stageMinX - (clusterMinX + clusterShiftX);
+      if(clusterMinX + clusterShiftX < bounds.minX){
+        clusterShiftX += bounds.minX - (clusterMinX + clusterShiftX);
       }
-      if(clusterMaxX + clusterShiftX > stageMaxX){
-        clusterShiftX += stageMaxX - (clusterMaxX + clusterShiftX);
+      if(clusterMaxX + clusterShiftX > bounds.maxX){
+        clusterShiftX += bounds.maxX - (clusterMaxX + clusterShiftX);
       }
     } else {
       const clusterCenterX = (clusterMinX + clusterMaxX) / 2;
-      const stageCenterX = (stageMinX + stageMaxX) / 2;
+      const stageCenterX = (bounds.minX + bounds.maxX) / 2;
       clusterShiftX = stageCenterX - clusterCenterX;
     }
 
     if(clusterHeight <= stageHeightAvailable){
-      if(clusterMinY < stageMinY){
-        clusterShiftY = stageMinY - clusterMinY;
+      if(clusterMinY < bounds.minY){
+        clusterShiftY = bounds.minY - clusterMinY;
       }
-      if(clusterMaxY + clusterShiftY > stageMaxY){
-        clusterShiftY += stageMaxY - (clusterMaxY + clusterShiftY);
+      if(clusterMaxY + clusterShiftY > bounds.maxY){
+        clusterShiftY += bounds.maxY - (clusterMaxY + clusterShiftY);
       }
-      if(clusterMinY + clusterShiftY < stageMinY){
-        clusterShiftY += stageMinY - (clusterMinY + clusterShiftY);
+      if(clusterMinY + clusterShiftY < bounds.minY){
+        clusterShiftY += bounds.minY - (clusterMinY + clusterShiftY);
       }
-      if(clusterMaxY + clusterShiftY > stageMaxY){
-        clusterShiftY += stageMaxY - (clusterMaxY + clusterShiftY);
+      if(clusterMaxY + clusterShiftY > bounds.maxY){
+        clusterShiftY += bounds.maxY - (clusterMaxY + clusterShiftY);
       }
     } else {
       const clusterCenterY = (clusterMinY + clusterMaxY) / 2;
-      const stageCenterY = (stageMinY + stageMaxY) / 2;
+      const stageCenterY = (bounds.minY + bounds.maxY) / 2;
       clusterShiftY = stageCenterY - clusterCenterY;
+    }
+
+    const finalShiftX = clusterShiftX + extraShiftX;
+    const finalShiftY = clusterShiftY + extraShiftY;
+
+    if(applyStyles){
+      for(const metric of badgeMetrics){
+        const offsetX = metric.baseOffset.x + finalShiftX;
+        const offsetY = metric.baseOffset.y + finalShiftY;
+        metric.badge.style.setProperty('--badge-offset-x', `${offsetX}px`);
+        metric.badge.style.setProperty('--badge-offset-y', `${offsetY}px`);
+      }
+    }
+
+    return {
+      centerX: ((clusterMinX + clusterMaxX) / 2) + clusterShiftX,
+      centerY: ((clusterMinY + clusterMaxY) / 2) + clusterShiftY,
+      halfWidth: clusterWidth / 2,
+      halfHeight: clusterHeight / 2,
+      shiftX: clusterShiftX,
+      shiftY: clusterShiftY,
+      appliedShiftX: finalShiftX,
+      appliedShiftY: finalShiftY,
+      extraShiftX,
+      extraShiftY
+    };
+  }
+
+  if(applyStyles){
+    for(const metric of badgeMetrics){
+      const offsetX = metric.baseOffset.x + extraShiftX;
+      const offsetY = metric.baseOffset.y + extraShiftY;
+      metric.badge.style.setProperty('--badge-offset-x', `${offsetX}px`);
+      metric.badge.style.setProperty('--badge-offset-y', `${offsetY}px`);
     }
   }
 
-  for(const metric of badgeMetrics){
-    const offsetX = metric.baseOffset.x + clusterShiftX;
-    const offsetY = metric.baseOffset.y + clusterShiftY;
-    metric.badge.style.setProperty('--badge-offset-x', `${offsetX}px`);
-    metric.badge.style.setProperty('--badge-offset-y', `${offsetY}px`);
+  return {
+    centerX: anchorX,
+    centerY: anchorY,
+    halfWidth: 0,
+    halfHeight: 0,
+    shiftX: 0,
+    shiftY: 0,
+    appliedShiftX: extraShiftX,
+    appliedShiftY: extraShiftY,
+    extraShiftX,
+    extraShiftY
+  };
+}
+
+function clampClusterShift(baseCluster, shiftX, shiftY, bounds){
+  if(!baseCluster || !bounds){
+    return { x: shiftX, y: shiftY };
+  }
+
+  let nextX = shiftX;
+  let nextY = shiftY;
+
+  const ensureXWithinBounds = () => {
+    if(baseCluster.halfWidth === 0){
+      return;
+    }
+    const minX = baseCluster.centerX + nextX - baseCluster.halfWidth;
+    const maxX = baseCluster.centerX + nextX + baseCluster.halfWidth;
+    if(minX < bounds.minX){
+      nextX += bounds.minX - minX;
+    }
+    if(maxX > bounds.maxX){
+      nextX += bounds.maxX - maxX;
+    }
+  };
+
+  const ensureYWithinBounds = () => {
+    if(baseCluster.halfHeight === 0){
+      return;
+    }
+    const minY = baseCluster.centerY + nextY - baseCluster.halfHeight;
+    const maxY = baseCluster.centerY + nextY + baseCluster.halfHeight;
+    if(minY < bounds.minY){
+      nextY += bounds.minY - minY;
+    }
+    if(maxY > bounds.maxY){
+      nextY += bounds.maxY - maxY;
+    }
+  };
+
+  ensureXWithinBounds();
+  ensureYWithinBounds();
+  // Re-run clamps to handle cascading adjustments.
+  ensureXWithinBounds();
+  ensureYWithinBounds();
+
+  return { x: nextX, y: nextY };
+}
+
+function getClusterBounds(entry){
+  const baseCluster = entry?.badgeClusterBase;
+  if(!baseCluster){
+    return null;
+  }
+  const shift = entry.badgeCollisionShift || { x: 0, y: 0 };
+  const minX = baseCluster.centerX + shift.x - baseCluster.halfWidth;
+  const maxX = baseCluster.centerX + shift.x + baseCluster.halfWidth;
+  const minY = baseCluster.centerY + shift.y - baseCluster.halfHeight;
+  const maxY = baseCluster.centerY + shift.y + baseCluster.halfHeight;
+  return { minX, maxX, minY, maxY };
+}
+
+function applyCollisionShift(entry, deltaX, deltaY, bounds){
+  if(!entry?.badgeClusterBase){
+    return false;
+  }
+  const current = entry.badgeCollisionShift || { x: 0, y: 0 };
+  const next = clampClusterShift(entry.badgeClusterBase, current.x + (deltaX || 0), current.y + (deltaY || 0), bounds);
+  if(next.x === current.x && next.y === current.y){
+    return false;
+  }
+  entry.badgeCollisionShift = next;
+  return true;
+}
+
+function resolveBadgeClusterCollisions(entries, stageMetrics = lastStageMetrics){
+  if(!Array.isArray(entries) || entries.length < 2){
+    return;
+  }
+  const bounds = deriveStageBounds(stageMetrics);
+  if(!bounds){
+    return;
+  }
+
+  const candidates = entries.filter((entry) => entry?.badgeClusterBase && entry.badgeClusterBase.halfWidth >= 0 && entry.badgeClusterBase.halfHeight >= 0);
+  if(candidates.length < 2){
+    return;
+  }
+
+  const maxIterations = candidates.length * candidates.length * 4;
+  if(maxIterations <= 0){
+    return;
+  }
+
+  const intersects = (a, b) => {
+    if(!a || !b){
+      return false;
+    }
+    return a.minX < b.maxX && a.maxX > b.minX && a.minY < b.maxY && a.maxY > b.minY;
+  };
+
+  const attemptAxis = (axis, entryA, entryB, boundsA, boundsB) => {
+    const overlapX = Math.min(boundsA.maxX, boundsB.maxX) - Math.max(boundsA.minX, boundsB.minX);
+    const overlapY = Math.min(boundsA.maxY, boundsB.maxY) - Math.max(boundsA.minY, boundsB.minY);
+    const overlap = axis === 'x' ? overlapX : overlapY;
+    if(!(overlap > 0)){
+      return false;
+    }
+
+    const baseA = entryA.badgeClusterBase;
+    const baseB = entryB.badgeClusterBase;
+    if(!baseA || !baseB){
+      return false;
+    }
+
+    const direction = axis === 'x'
+      ? (baseA.centerX >= baseB.centerX ? 1 : -1)
+      : (baseA.centerY >= baseB.centerY ? 1 : -1);
+    const pushAmount = (overlap / 2) + 1;
+    const deltaAX = axis === 'x' ? direction * pushAmount : 0;
+    const deltaAY = axis === 'y' ? direction * pushAmount : 0;
+    const deltaBX = -deltaAX;
+    const deltaBY = -deltaAY;
+
+    const movedA = applyCollisionShift(entryA, deltaAX, deltaAY, bounds);
+    const movedB = applyCollisionShift(entryB, deltaBX, deltaBY, bounds);
+    return movedA || movedB;
+  };
+
+  let iteration = 0;
+  while(iteration < maxIterations){
+    let adjusted = false;
+    for(let i = 0; i < candidates.length; i += 1){
+      const entryA = candidates[i];
+      let boundsA = getClusterBounds(entryA);
+      if(!boundsA){
+        continue;
+      }
+      for(let j = i + 1; j < candidates.length; j += 1){
+        const entryB = candidates[j];
+        let boundsB = getClusterBounds(entryB);
+        if(!boundsB){
+          continue;
+        }
+        if(!intersects(boundsA, boundsB)){
+          continue;
+        }
+
+        const movedX = attemptAxis('x', entryA, entryB, boundsA, boundsB);
+        if(movedX){
+          adjusted = true;
+          boundsA = getClusterBounds(entryA);
+          boundsB = getClusterBounds(entryB);
+          if(!intersects(boundsA, boundsB)){
+            continue;
+          }
+        }
+
+        const movedY = attemptAxis('y', entryA, entryB, boundsA, boundsB);
+        if(movedY){
+          adjusted = true;
+          boundsA = getClusterBounds(entryA);
+          boundsB = getClusterBounds(entryB);
+        }
+      }
+    }
+    if(!adjusted){
+      break;
+    }
+    iteration += 1;
   }
 }
 
@@ -319,6 +548,7 @@ function layoutAnchors(){
     padding: stagePadding,
     rect: rectSnapshot
   };
+  const collisionEntries = [];
   for(const anchor of anchors){
     if(!anchor || !anchor.id) continue;
     const entry = anchorElements.get(anchor.id);
@@ -377,7 +607,31 @@ function layoutAnchors(){
       }
     }
 
-    positionPlacementBadges(entry, lastStageMetrics);
+    entry.badgeClusterBase = null;
+    entry.badgeCluster = null;
+    entry.badgeCollisionShift = { x: 0, y: 0 };
+
+    const baseCluster = positionPlacementBadges(entry, lastStageMetrics, {
+      extraShift: entry.badgeCollisionShift,
+      applyStyles: false
+    });
+    if(baseCluster){
+      entry.badgeClusterBase = baseCluster;
+      collisionEntries.push(entry);
+    }
+  }
+
+  if(collisionEntries.length){
+    resolveBadgeClusterCollisions(collisionEntries, lastStageMetrics);
+    for(const entry of collisionEntries){
+      const finalCluster = positionPlacementBadges(entry, lastStageMetrics, {
+        extraShift: entry.badgeCollisionShift,
+        applyStyles: true
+      });
+      if(finalCluster){
+        entry.badgeCluster = finalCluster;
+      }
+    }
   }
 }
 
@@ -633,6 +887,9 @@ function rebuildAnchors(){
       y: 0,
       relativeX: 0,
       relativeY: 0,
+      badgeClusterBase: null,
+      badgeCluster: null,
+      badgeCollisionShift: { x: 0, y: 0 },
       feedbackActive: false,
       feedbackHandlers: null
     });
