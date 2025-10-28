@@ -45,16 +45,15 @@ function playPlacementSound() {
   }
 
   const startTime = ctx.currentTime;
-  const duration = 0.25;
+  const duration = 0.08;
 
   const oscillator = ctx.createOscillator();
-  oscillator.type = 'triangle';
-  oscillator.frequency.setValueAtTime(660, startTime);
-  oscillator.frequency.exponentialRampToValueAtTime(880, startTime + duration);
+  oscillator.type = 'sine';
+  oscillator.frequency.setValueAtTime(420, startTime);
 
   const gain = ctx.createGain();
   gain.gain.setValueAtTime(0.0001, startTime);
-  gain.gain.exponentialRampToValueAtTime(0.4, startTime + 0.03);
+  gain.gain.exponentialRampToValueAtTime(0.35, startTime + 0.01);
   gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
 
   oscillator.connect(gain);
