@@ -4,10 +4,12 @@ import { qs } from '../core/utils.js';
 let stageEl = null;
 let backgroundImg = null;
 let anchorLayerEl = null;
+let badgeOverlayEl = null;
 let lastScenario = null;
 const anchorElements = new Map();
 let resizeObserver = null;
 let windowResizeBound = false;
+let lastStageMetrics = null;
 
 const BADGE_OFFSETS_BY_COUNT = {
   1: [{ x: 0, y: -42 }],
@@ -33,6 +35,8 @@ function clearStage(){
   anchorElements.clear();
   backgroundImg = null;
   anchorLayerEl = null;
+  badgeOverlayEl = null;
+  lastStageMetrics = null;
 }
 
 function resolveBackgroundSrc(scenario){
@@ -72,8 +76,25 @@ function ensureAnchorLayer(){
   return anchorLayerEl;
 }
 
+function ensureBadgeOverlay(){
+  if(badgeOverlayEl) return badgeOverlayEl;
+  if(!stageEl) return null;
+  badgeOverlayEl = document.createElement('div');
+  badgeOverlayEl.className = 'anchor-badge-layer';
+  badgeOverlayEl.style.position = 'absolute';
+  badgeOverlayEl.style.left = '0';
+  badgeOverlayEl.style.top = '0';
+  badgeOverlayEl.style.width = '100%';
+  badgeOverlayEl.style.height = '100%';
+  badgeOverlayEl.style.pointerEvents = 'none';
+  badgeOverlayEl.style.zIndex = '4';
+  stageEl.appendChild(badgeOverlayEl);
+  return badgeOverlayEl;
+}
+
 function createAnchorElement(anchor){
   const layer = ensureAnchorLayer();
+  const overlay = ensureBadgeOverlay();
   if(!layer) return null;
 
   const root = document.createElement('div');
@@ -109,7 +130,11 @@ function createAnchorElement(anchor){
 
   const placementContainer = document.createElement('div');
   placementContainer.className = 'anchor-hit__placements';
-  root.appendChild(placementContainer);
+  if(overlay){
+    overlay.appendChild(placementContainer);
+  } else {
+    root.appendChild(placementContainer);
+  }
 
   layer.appendChild(root);
   return { root, hit: dot, label: labelEl, placements: placementContainer };
@@ -130,15 +155,50 @@ function computeBadgeOffsets(count){
   return layout.slice(0, capped);
 }
 
-function positionPlacementBadges(entry){
+function positionPlacementBadges(entry, stageMetrics = lastStageMetrics){
   const container = entry?.placementContainer;
   if(!container) return;
   const badges = Array.from(container.children);
   const offsets = computeBadgeOffsets(badges.length);
   badges.forEach((badge, index) => {
-    const offset = offsets[index] || offsets[offsets.length - 1] || { x: 0, y: 0 };
-    badge.style.setProperty('--badge-offset-x', `${offset.x}px`);
-    badge.style.setProperty('--badge-offset-y', `${offset.y}px`);
+    const baseOffset = offsets[index] || offsets[offsets.length - 1] || { x: 0, y: 0 };
+    let offsetX = baseOffset.x;
+    let offsetY = baseOffset.y;
+
+    if(stageMetrics){
+      const stageWidth = stageMetrics.width;
+      const stageHeight = stageMetrics.height;
+      const stagePadding = stageMetrics.padding;
+      if(stageWidth && stageHeight){
+        const badgeWidth = badge.offsetWidth || badge.clientWidth || 64;
+        const badgeHeight = badge.offsetHeight || badge.clientHeight || 64;
+        const halfWidth = badgeWidth / 2;
+        const halfHeight = badgeHeight / 2;
+        const minX = stagePadding + halfWidth;
+        const maxX = stageWidth - stagePadding - halfWidth;
+        const minY = stagePadding + halfHeight;
+        const maxY = stageHeight - stagePadding - halfHeight;
+        const anchorX = entry.relativeX ?? 0;
+        const anchorY = entry.relativeY ?? 0;
+        let targetX = anchorX + offsetX;
+        let targetY = anchorY + offsetY;
+
+        if(targetX < minX){
+          offsetX += (minX - targetX);
+        } else if(targetX > maxX){
+          offsetX -= (targetX - maxX);
+        }
+
+        if(targetY < minY){
+          offsetY += (minY - targetY);
+        } else if(targetY > maxY){
+          offsetY -= (targetY - maxY);
+        }
+      }
+    }
+
+    badge.style.setProperty('--badge-offset-x', `${offsetX}px`);
+    badge.style.setProperty('--badge-offset-y', `${offsetY}px`);
   });
 }
 
@@ -147,6 +207,8 @@ function layoutAnchors(){
   if(!root) return;
   const layer = ensureAnchorLayer();
   if(!layer) return;
+  const overlay = ensureBadgeOverlay();
+  if(!overlay) return;
 
   let width = root.clientWidth;
   let height = root.clientHeight;
@@ -170,10 +232,15 @@ function layoutAnchors(){
   layer.style.height = `${height}px`;
   layer.style.left = `${offsetLeft}px`;
   layer.style.top = `${offsetTop}px`;
+  overlay.style.width = `${width}px`;
+  overlay.style.height = `${height}px`;
+  overlay.style.left = `${offsetLeft}px`;
+  overlay.style.top = `${offsetTop}px`;
 
   const anchors = Array.isArray(lastScenario?.anchors) ? lastScenario.anchors : [];
   const layerRect = layer.getBoundingClientRect();
   const stagePadding = 8;
+  lastStageMetrics = { width, height, padding: stagePadding };
   for(const anchor of anchors){
     if(!anchor || !anchor.id) continue;
     const entry = anchorElements.get(anchor.id);
@@ -186,6 +253,11 @@ function layoutAnchors(){
     const anchorEl = entry.element;
     anchorEl.style.left = `${x}px`;
     anchorEl.style.top = `${y}px`;
+
+    if(entry.placementContainer){
+      entry.placementContainer.style.left = `${x}px`;
+      entry.placementContainer.style.top = `${y}px`;
+    }
 
     const labelEl = entry.labelElement;
     if(labelEl){
@@ -227,7 +299,7 @@ function layoutAnchors(){
       }
     }
 
-    positionPlacementBadges(entry);
+    positionPlacementBadges(entry, lastStageMetrics);
   }
 }
 
@@ -461,6 +533,10 @@ function rebuildAnchors(){
   const layer = ensureAnchorLayer();
   if(layer){
     layer.innerHTML = '';
+  }
+  const overlay = ensureBadgeOverlay();
+  if(overlay){
+    overlay.innerHTML = '';
   }
   anchorElements.clear();
   const anchors = Array.isArray(lastScenario?.anchors) ? lastScenario.anchors : [];

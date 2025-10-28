@@ -6,6 +6,8 @@
 .stage .bg{display:block;width:100%;height:auto}
 .stage .anchor-layer{position:absolute;inset:0;pointer-events:none}
 .stage .anchor-layer .anchor-hit{pointer-events:auto}
+.stage .anchor-badge-layer{position:absolute;inset:0;pointer-events:none;z-index:30}
+.stage .anchor-badge-layer .anchor-hit__placements{position:absolute}
 .anchor-hit{position:absolute;width:20px;height:20px;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;pointer-events:auto;border-radius:9999px;animation:anchorPulse 2.4s ease-in-out infinite;--anchor-label-shift-x:0px;--anchor-label-shift-y:0px}
 .anchor-hit__dot{position:relative;display:block;width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#bae6fd 0,#38bdf8 55%,#0284c7 100%);border:2px solid rgba(248,250,252,.95);box-shadow:0 0 0 2px rgba(15,23,42,.4),0 0 10px rgba(56,189,248,.7);opacity:.95}
 .anchor-hit--allowed .anchor-hit__dot{box-shadow:0 0 0 2px rgba(56,189,248,.9),0 0 14px rgba(59,130,246,.8);transform:scale(1.05)}
