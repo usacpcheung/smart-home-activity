@@ -384,6 +384,7 @@ export function syncAnchorPlacements(placements, options = {}){
       const badge = document.createElement('button');
       badge.type = 'button';
       badge.className = 'anchor-hit__badge placed';
+      badge.classList.add('anchor-hit__badge-card');
       badge.dataset.anchorId = anchorId;
       if(placement.deviceId){
         badge.dataset.deviceId = placement.deviceId;
