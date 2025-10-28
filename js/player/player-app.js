@@ -20,6 +20,13 @@ const state = {
 
 const boundAnchorElements = new WeakSet();
 
+function ensureStageVisibility() {
+  const stage = qs('#playerStage');
+  if (stage?.scrollIntoView) {
+    stage.scrollIntoView({ block: 'center', behavior: 'instant' });
+  }
+}
+
 function setPendingDevice(deviceId) {
   state.pendingDeviceId = typeof deviceId === 'string' && deviceId ? deviceId : null;
   document.querySelectorAll('.device-card--pending').forEach((el) => {
@@ -219,6 +226,9 @@ function bindDeviceCardInteractions(card, device) {
 
   const selectDevice = () => {
     const alreadySelected = state.pendingDeviceId === device.id;
+    if (!alreadySelected) {
+      ensureStageVisibility();
+    }
     setPendingDevice(alreadySelected ? null : device.id);
   };
 
@@ -234,6 +244,7 @@ function bindDeviceCardInteractions(card, device) {
   });
 
   card.addEventListener('dragstart', (event) => {
+    ensureStageVisibility();
     setPendingDevice(device.id);
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = 'copy';
