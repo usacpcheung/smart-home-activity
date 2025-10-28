@@ -4,10 +4,12 @@ import { qs } from '../core/utils.js';
 let stageEl = null;
 let backgroundImg = null;
 let anchorLayerEl = null;
+let badgeOverlayEl = null;
 let lastScenario = null;
 const anchorElements = new Map();
 let resizeObserver = null;
 let windowResizeBound = false;
+let lastStageMetrics = null;
 
 const BADGE_OFFSETS_BY_COUNT = {
   1: [{ x: 0, y: -42 }],
@@ -33,6 +35,8 @@ function clearStage(){
   anchorElements.clear();
   backgroundImg = null;
   anchorLayerEl = null;
+  badgeOverlayEl = null;
+  lastStageMetrics = null;
 }
 
 function resolveBackgroundSrc(scenario){
@@ -72,8 +76,25 @@ function ensureAnchorLayer(){
   return anchorLayerEl;
 }
 
+function ensureBadgeOverlay(){
+  if(badgeOverlayEl) return badgeOverlayEl;
+  if(!stageEl) return null;
+  badgeOverlayEl = document.createElement('div');
+  badgeOverlayEl.className = 'anchor-badge-layer';
+  badgeOverlayEl.style.position = 'absolute';
+  badgeOverlayEl.style.left = '0';
+  badgeOverlayEl.style.top = '0';
+  badgeOverlayEl.style.width = '100%';
+  badgeOverlayEl.style.height = '100%';
+  badgeOverlayEl.style.pointerEvents = 'none';
+  badgeOverlayEl.style.zIndex = '4';
+  stageEl.appendChild(badgeOverlayEl);
+  return badgeOverlayEl;
+}
+
 function createAnchorElement(anchor){
   const layer = ensureAnchorLayer();
+  const overlay = ensureBadgeOverlay();
   if(!layer) return null;
 
   const root = document.createElement('div');
@@ -109,7 +130,11 @@ function createAnchorElement(anchor){
 
   const placementContainer = document.createElement('div');
   placementContainer.className = 'anchor-hit__placements';
-  root.appendChild(placementContainer);
+  if(overlay){
+    overlay.appendChild(placementContainer);
+  } else {
+    root.appendChild(placementContainer);
+  }
 
   layer.appendChild(root);
   return { root, hit: dot, label: labelEl, placements: placementContainer };
@@ -130,16 +155,344 @@ function computeBadgeOffsets(count){
   return layout.slice(0, capped);
 }
 
-function positionPlacementBadges(entry){
+function deriveStageBounds(metrics){
+  const data = metrics || {};
+  const rect = data.rect;
+  const width = rect?.width || data.width || 0;
+  const height = rect?.height || data.height || 0;
+  if(!width || !height){
+    return null;
+  }
+  const padding = Number.isFinite(data.padding) ? data.padding : 0;
+  return {
+    minX: padding,
+    minY: padding,
+    maxX: width - padding,
+    maxY: height - padding,
+    width,
+    height,
+    padding
+  };
+}
+
+function positionPlacementBadges(entry, stageMetrics = lastStageMetrics, options = {}){
   const container = entry?.placementContainer;
-  if(!container) return;
+  if(!container) return null;
   const badges = Array.from(container.children);
+  if(!badges.length){
+    return null;
+  }
+
+  const { extraShift } = options;
+  const applyStyles = options.applyStyles !== false;
+  const extraShiftX = extraShift?.x ?? 0;
+  const extraShiftY = extraShift?.y ?? 0;
+
   const offsets = computeBadgeOffsets(badges.length);
-  badges.forEach((badge, index) => {
-    const offset = offsets[index] || offsets[offsets.length - 1] || { x: 0, y: 0 };
-    badge.style.setProperty('--badge-offset-x', `${offset.x}px`);
-    badge.style.setProperty('--badge-offset-y', `${offset.y}px`);
+  const bounds = deriveStageBounds(stageMetrics);
+  const anchorX = entry.relativeX ?? 0;
+  const anchorY = entry.relativeY ?? 0;
+
+  let clusterShiftX = 0;
+  let clusterShiftY = 0;
+
+  const badgeMetrics = badges.map((badge, index) => {
+    const baseOffset = offsets[index] || offsets[offsets.length - 1] || { x: 0, y: 0 };
+    const badgeRect = badge.getBoundingClientRect();
+    const width = badgeRect?.width || badge.offsetWidth || badge.clientWidth || 64;
+    const height = badgeRect?.height || badge.offsetHeight || badge.clientHeight || 64;
+    const halfWidth = width / 2;
+    const halfHeight = height / 2;
+    const centerX = anchorX + baseOffset.x;
+    const centerY = anchorY + baseOffset.y;
+    return {
+      badge,
+      baseOffset,
+      width,
+      height,
+      halfWidth,
+      halfHeight,
+      centerX,
+      centerY
+    };
   });
+
+  if(bounds){
+    let clusterMinX = Infinity;
+    let clusterMaxX = -Infinity;
+    let clusterMinY = Infinity;
+    let clusterMaxY = -Infinity;
+
+    for(const metric of badgeMetrics){
+      const minX = metric.centerX - metric.halfWidth;
+      const maxX = metric.centerX + metric.halfWidth;
+      const minY = metric.centerY - metric.halfHeight;
+      const maxY = metric.centerY + metric.halfHeight;
+      if(minX < clusterMinX) clusterMinX = minX;
+      if(maxX > clusterMaxX) clusterMaxX = maxX;
+      if(minY < clusterMinY) clusterMinY = minY;
+      if(maxY > clusterMaxY) clusterMaxY = maxY;
+    }
+
+    const clusterWidth = clusterMaxX - clusterMinX;
+    const clusterHeight = clusterMaxY - clusterMinY;
+    const stageWidthAvailable = bounds.maxX - bounds.minX;
+    const stageHeightAvailable = bounds.maxY - bounds.minY;
+
+    if(clusterWidth <= stageWidthAvailable){
+      if(clusterMinX < bounds.minX){
+        clusterShiftX = bounds.minX - clusterMinX;
+      }
+      if(clusterMaxX + clusterShiftX > bounds.maxX){
+        clusterShiftX += bounds.maxX - (clusterMaxX + clusterShiftX);
+      }
+      if(clusterMinX + clusterShiftX < bounds.minX){
+        clusterShiftX += bounds.minX - (clusterMinX + clusterShiftX);
+      }
+      if(clusterMaxX + clusterShiftX > bounds.maxX){
+        clusterShiftX += bounds.maxX - (clusterMaxX + clusterShiftX);
+      }
+    } else {
+      const clusterCenterX = (clusterMinX + clusterMaxX) / 2;
+      const stageCenterX = (bounds.minX + bounds.maxX) / 2;
+      clusterShiftX = stageCenterX - clusterCenterX;
+    }
+
+    if(clusterHeight <= stageHeightAvailable){
+      if(clusterMinY < bounds.minY){
+        clusterShiftY = bounds.minY - clusterMinY;
+      }
+      if(clusterMaxY + clusterShiftY > bounds.maxY){
+        clusterShiftY += bounds.maxY - (clusterMaxY + clusterShiftY);
+      }
+      if(clusterMinY + clusterShiftY < bounds.minY){
+        clusterShiftY += bounds.minY - (clusterMinY + clusterShiftY);
+      }
+      if(clusterMaxY + clusterShiftY > bounds.maxY){
+        clusterShiftY += bounds.maxY - (clusterMaxY + clusterShiftY);
+      }
+    } else {
+      const clusterCenterY = (clusterMinY + clusterMaxY) / 2;
+      const stageCenterY = (bounds.minY + bounds.maxY) / 2;
+      clusterShiftY = stageCenterY - clusterCenterY;
+    }
+
+    const finalShiftX = clusterShiftX + extraShiftX;
+    const finalShiftY = clusterShiftY + extraShiftY;
+
+    if(applyStyles){
+      for(const metric of badgeMetrics){
+        const offsetX = metric.baseOffset.x + finalShiftX;
+        const offsetY = metric.baseOffset.y + finalShiftY;
+        metric.badge.style.setProperty('--badge-offset-x', `${offsetX}px`);
+        metric.badge.style.setProperty('--badge-offset-y', `${offsetY}px`);
+      }
+    }
+
+    return {
+      centerX: ((clusterMinX + clusterMaxX) / 2) + clusterShiftX,
+      centerY: ((clusterMinY + clusterMaxY) / 2) + clusterShiftY,
+      halfWidth: clusterWidth / 2,
+      halfHeight: clusterHeight / 2,
+      shiftX: clusterShiftX,
+      shiftY: clusterShiftY,
+      appliedShiftX: finalShiftX,
+      appliedShiftY: finalShiftY,
+      extraShiftX,
+      extraShiftY
+    };
+  }
+
+  if(applyStyles){
+    for(const metric of badgeMetrics){
+      const offsetX = metric.baseOffset.x + extraShiftX;
+      const offsetY = metric.baseOffset.y + extraShiftY;
+      metric.badge.style.setProperty('--badge-offset-x', `${offsetX}px`);
+      metric.badge.style.setProperty('--badge-offset-y', `${offsetY}px`);
+    }
+  }
+
+  return {
+    centerX: anchorX,
+    centerY: anchorY,
+    halfWidth: 0,
+    halfHeight: 0,
+    shiftX: 0,
+    shiftY: 0,
+    appliedShiftX: extraShiftX,
+    appliedShiftY: extraShiftY,
+    extraShiftX,
+    extraShiftY
+  };
+}
+
+function clampClusterShift(baseCluster, shiftX, shiftY, bounds){
+  if(!baseCluster || !bounds){
+    return { x: shiftX, y: shiftY };
+  }
+
+  let nextX = shiftX;
+  let nextY = shiftY;
+
+  const ensureXWithinBounds = () => {
+    if(baseCluster.halfWidth === 0){
+      return;
+    }
+    const minX = baseCluster.centerX + nextX - baseCluster.halfWidth;
+    const maxX = baseCluster.centerX + nextX + baseCluster.halfWidth;
+    if(minX < bounds.minX){
+      nextX += bounds.minX - minX;
+    }
+    if(maxX > bounds.maxX){
+      nextX += bounds.maxX - maxX;
+    }
+  };
+
+  const ensureYWithinBounds = () => {
+    if(baseCluster.halfHeight === 0){
+      return;
+    }
+    const minY = baseCluster.centerY + nextY - baseCluster.halfHeight;
+    const maxY = baseCluster.centerY + nextY + baseCluster.halfHeight;
+    if(minY < bounds.minY){
+      nextY += bounds.minY - minY;
+    }
+    if(maxY > bounds.maxY){
+      nextY += bounds.maxY - maxY;
+    }
+  };
+
+  ensureXWithinBounds();
+  ensureYWithinBounds();
+  // Re-run clamps to handle cascading adjustments.
+  ensureXWithinBounds();
+  ensureYWithinBounds();
+
+  return { x: nextX, y: nextY };
+}
+
+function getClusterBounds(entry){
+  const baseCluster = entry?.badgeClusterBase;
+  if(!baseCluster){
+    return null;
+  }
+  const shift = entry.badgeCollisionShift || { x: 0, y: 0 };
+  const minX = baseCluster.centerX + shift.x - baseCluster.halfWidth;
+  const maxX = baseCluster.centerX + shift.x + baseCluster.halfWidth;
+  const minY = baseCluster.centerY + shift.y - baseCluster.halfHeight;
+  const maxY = baseCluster.centerY + shift.y + baseCluster.halfHeight;
+  return { minX, maxX, minY, maxY };
+}
+
+function applyCollisionShift(entry, deltaX, deltaY, bounds){
+  if(!entry?.badgeClusterBase){
+    return false;
+  }
+  const current = entry.badgeCollisionShift || { x: 0, y: 0 };
+  const next = clampClusterShift(entry.badgeClusterBase, current.x + (deltaX || 0), current.y + (deltaY || 0), bounds);
+  if(next.x === current.x && next.y === current.y){
+    return false;
+  }
+  entry.badgeCollisionShift = next;
+  return true;
+}
+
+function resolveBadgeClusterCollisions(entries, stageMetrics = lastStageMetrics){
+  if(!Array.isArray(entries) || entries.length < 2){
+    return;
+  }
+  const bounds = deriveStageBounds(stageMetrics);
+  if(!bounds){
+    return;
+  }
+
+  const candidates = entries.filter((entry) => entry?.badgeClusterBase && entry.badgeClusterBase.halfWidth >= 0 && entry.badgeClusterBase.halfHeight >= 0);
+  if(candidates.length < 2){
+    return;
+  }
+
+  const maxIterations = candidates.length * candidates.length * 4;
+  if(maxIterations <= 0){
+    return;
+  }
+
+  const intersects = (a, b) => {
+    if(!a || !b){
+      return false;
+    }
+    return a.minX < b.maxX && a.maxX > b.minX && a.minY < b.maxY && a.maxY > b.minY;
+  };
+
+  const attemptAxis = (axis, entryA, entryB, boundsA, boundsB) => {
+    const overlapX = Math.min(boundsA.maxX, boundsB.maxX) - Math.max(boundsA.minX, boundsB.minX);
+    const overlapY = Math.min(boundsA.maxY, boundsB.maxY) - Math.max(boundsA.minY, boundsB.minY);
+    const overlap = axis === 'x' ? overlapX : overlapY;
+    if(!(overlap > 0)){
+      return false;
+    }
+
+    const baseA = entryA.badgeClusterBase;
+    const baseB = entryB.badgeClusterBase;
+    if(!baseA || !baseB){
+      return false;
+    }
+
+    const direction = axis === 'x'
+      ? (baseA.centerX >= baseB.centerX ? 1 : -1)
+      : (baseA.centerY >= baseB.centerY ? 1 : -1);
+    const pushAmount = (overlap / 2) + 1;
+    const deltaAX = axis === 'x' ? direction * pushAmount : 0;
+    const deltaAY = axis === 'y' ? direction * pushAmount : 0;
+    const deltaBX = -deltaAX;
+    const deltaBY = -deltaAY;
+
+    const movedA = applyCollisionShift(entryA, deltaAX, deltaAY, bounds);
+    const movedB = applyCollisionShift(entryB, deltaBX, deltaBY, bounds);
+    return movedA || movedB;
+  };
+
+  let iteration = 0;
+  while(iteration < maxIterations){
+    let adjusted = false;
+    for(let i = 0; i < candidates.length; i += 1){
+      const entryA = candidates[i];
+      let boundsA = getClusterBounds(entryA);
+      if(!boundsA){
+        continue;
+      }
+      for(let j = i + 1; j < candidates.length; j += 1){
+        const entryB = candidates[j];
+        let boundsB = getClusterBounds(entryB);
+        if(!boundsB){
+          continue;
+        }
+        if(!intersects(boundsA, boundsB)){
+          continue;
+        }
+
+        const movedX = attemptAxis('x', entryA, entryB, boundsA, boundsB);
+        if(movedX){
+          adjusted = true;
+          boundsA = getClusterBounds(entryA);
+          boundsB = getClusterBounds(entryB);
+          if(!intersects(boundsA, boundsB)){
+            continue;
+          }
+        }
+
+        const movedY = attemptAxis('y', entryA, entryB, boundsA, boundsB);
+        if(movedY){
+          adjusted = true;
+          boundsA = getClusterBounds(entryA);
+          boundsB = getClusterBounds(entryB);
+        }
+      }
+    }
+    if(!adjusted){
+      break;
+    }
+    iteration += 1;
+  }
 }
 
 function layoutAnchors(){
@@ -147,6 +500,8 @@ function layoutAnchors(){
   if(!root) return;
   const layer = ensureAnchorLayer();
   if(!layer) return;
+  const overlay = ensureBadgeOverlay();
+  if(!overlay) return;
 
   let width = root.clientWidth;
   let height = root.clientHeight;
@@ -170,10 +525,30 @@ function layoutAnchors(){
   layer.style.height = `${height}px`;
   layer.style.left = `${offsetLeft}px`;
   layer.style.top = `${offsetTop}px`;
+  overlay.style.width = `${width}px`;
+  overlay.style.height = `${height}px`;
+  overlay.style.left = `${offsetLeft}px`;
+  overlay.style.top = `${offsetTop}px`;
 
   const anchors = Array.isArray(lastScenario?.anchors) ? lastScenario.anchors : [];
   const layerRect = layer.getBoundingClientRect();
+  const overlayRect = overlay.getBoundingClientRect();
+  const rectSnapshot = overlayRect ? {
+    width: overlayRect.width,
+    height: overlayRect.height,
+    left: overlayRect.left,
+    top: overlayRect.top,
+    right: overlayRect.right,
+    bottom: overlayRect.bottom
+  } : null;
   const stagePadding = 8;
+  lastStageMetrics = {
+    width: rectSnapshot?.width || width,
+    height: rectSnapshot?.height || height,
+    padding: stagePadding,
+    rect: rectSnapshot
+  };
+  const collisionEntries = [];
   for(const anchor of anchors){
     if(!anchor || !anchor.id) continue;
     const entry = anchorElements.get(anchor.id);
@@ -186,6 +561,11 @@ function layoutAnchors(){
     const anchorEl = entry.element;
     anchorEl.style.left = `${x}px`;
     anchorEl.style.top = `${y}px`;
+
+    if(entry.placementContainer){
+      entry.placementContainer.style.left = `${x}px`;
+      entry.placementContainer.style.top = `${y}px`;
+    }
 
     const labelEl = entry.labelElement;
     if(labelEl){
@@ -227,7 +607,31 @@ function layoutAnchors(){
       }
     }
 
-    positionPlacementBadges(entry);
+    entry.badgeClusterBase = null;
+    entry.badgeCluster = null;
+    entry.badgeCollisionShift = { x: 0, y: 0 };
+
+    const baseCluster = positionPlacementBadges(entry, lastStageMetrics, {
+      extraShift: entry.badgeCollisionShift,
+      applyStyles: false
+    });
+    if(baseCluster){
+      entry.badgeClusterBase = baseCluster;
+      collisionEntries.push(entry);
+    }
+  }
+
+  if(collisionEntries.length){
+    resolveBadgeClusterCollisions(collisionEntries, lastStageMetrics);
+    for(const entry of collisionEntries){
+      const finalCluster = positionPlacementBadges(entry, lastStageMetrics, {
+        extraShift: entry.badgeCollisionShift,
+        applyStyles: true
+      });
+      if(finalCluster){
+        entry.badgeCluster = finalCluster;
+      }
+    }
   }
 }
 
@@ -384,6 +788,7 @@ export function syncAnchorPlacements(placements, options = {}){
       const badge = document.createElement('button');
       badge.type = 'button';
       badge.className = 'anchor-hit__badge placed';
+      badge.classList.add('anchor-hit__badge-card');
       badge.dataset.anchorId = anchorId;
       if(placement.deviceId){
         badge.dataset.deviceId = placement.deviceId;
@@ -450,7 +855,7 @@ export function syncAnchorPlacements(placements, options = {}){
 
       container.appendChild(badge);
     }
-    positionPlacementBadges(entry);
+    positionPlacementBadges(entry, lastStageMetrics);
   }
 
   layoutAnchors();
@@ -460,6 +865,10 @@ function rebuildAnchors(){
   const layer = ensureAnchorLayer();
   if(layer){
     layer.innerHTML = '';
+  }
+  const overlay = ensureBadgeOverlay();
+  if(overlay){
+    overlay.innerHTML = '';
   }
   anchorElements.clear();
   const anchors = Array.isArray(lastScenario?.anchors) ? lastScenario.anchors : [];
@@ -478,6 +887,9 @@ function rebuildAnchors(){
       y: 0,
       relativeX: 0,
       relativeY: 0,
+      badgeClusterBase: null,
+      badgeCluster: null,
+      badgeCollisionShift: { x: 0, y: 0 },
       feedbackActive: false,
       feedbackHandlers: null
     });

@@ -20,6 +20,13 @@ const state = {
 
 const boundAnchorElements = new WeakSet();
 
+function ensureStageVisibility() {
+  const stage = qs('#playerStage');
+  if (stage?.scrollIntoView) {
+    stage.scrollIntoView({ block: 'center', behavior: 'instant' });
+  }
+}
+
 function setPendingDevice(deviceId) {
   state.pendingDeviceId = typeof deviceId === 'string' && deviceId ? deviceId : null;
   document.querySelectorAll('.device-card--pending').forEach((el) => {
@@ -217,8 +224,11 @@ function bindStageInteractions() {
 function bindDeviceCardInteractions(card, device) {
   card.draggable = true;
 
-  const selectDevice = () => {
+  const selectDevice = ({ fromKeyboard = false } = {}) => {
     const alreadySelected = state.pendingDeviceId === device.id;
+    if (fromKeyboard && !alreadySelected) {
+      ensureStageVisibility();
+    }
     setPendingDevice(alreadySelected ? null : device.id);
   };
 
@@ -229,7 +239,7 @@ function bindDeviceCardInteractions(card, device) {
   card.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      selectDevice();
+      selectDevice({ fromKeyboard: true });
     }
   });
 

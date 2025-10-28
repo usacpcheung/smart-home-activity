@@ -10,7 +10,7 @@ body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;background:#f8fafc;c
 @media (min-width:1080px){.grid{grid-template-columns:280px minmax(0,1fr) 320px}}
 @media (max-width:1079px){.grid{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}}
 .pane{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px;min-height:60vh;overflow:auto}
-.stage-wrap{position:relative;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:8px;min-height:60vh}
+.stage-wrap{position:sticky;top:16px;align-self:start;max-height:calc(100vh - 32px);overflow:auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:8px;min-height:60vh}
 .stage{position:relative;background:#f1f5f9;border:1px dashed #cbd5e1;border-radius:10px;min-height:480px;overflow:hidden}
 .overlay{position:absolute;inset:0;pointer-events:none}
 .aims{background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:8px;margin-bottom:8px}
