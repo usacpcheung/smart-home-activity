@@ -2,7 +2,7 @@ import { loadCatalog } from '../core/catalog.js';
 import { evaluate } from '../core/engine.js';
 import { validateRulesStructure } from '../core/rules.js';
 import { qs } from '../core/utils.js';
-import { renderStage as renderStageView } from './stage-runtime.js';
+import { renderStage as renderStageView, refreshAnchorFeedback, setAnchorFeedbackEvaluator, syncAnchorPlacements } from './stage-runtime.js';
 
 const STORED_SCENARIOS_KEY = 'uploadedScenarios';
 const DEFAULT_SCENARIO_URL = 'scenarios/case01/scenario.json';
@@ -35,6 +35,7 @@ function setPendingDevice(deviceId) {
       }
     });
   }
+  refreshAnchorFeedback();
 }
 
 function getDeviceMeta(deviceId) {
@@ -60,6 +61,64 @@ function formatPlacementNames(deviceId, anchorId) {
   const deviceName = device?.name || deviceId || 'device';
   const anchorName = anchor?.label || anchor?.id || 'anchor';
   return { deviceName, anchorName };
+}
+
+function evaluatePlacementAllowance(anchorId) {
+  if (!state.pendingDeviceId) {
+    return null;
+  }
+  const deviceId = state.pendingDeviceId;
+  const anchor = findAnchor(anchorId);
+  if (!anchor) {
+    return { allowed: false };
+  }
+
+  const accepts = Array.isArray(anchor.accepts) ? anchor.accepts : [];
+  if (accepts.length && !accepts.includes(deviceId)) {
+    return { allowed: false };
+  }
+
+  const placementsForAnchor = state.placements.filter((entry) => entry.anchorId === anchorId);
+  if (placementsForAnchor.length >= 4) {
+    return { allowed: false };
+  }
+
+  if (placementsForAnchor.some((entry) => entry.deviceId === deviceId)) {
+    return { allowed: false };
+  }
+
+  return { allowed: true };
+}
+
+function updateStagePlacements() {
+  const enriched = state.placements.map((placement) => {
+    const names = formatPlacementNames(placement.deviceId, placement.anchorId);
+    return {
+      ...placement,
+      deviceName: names.deviceName,
+      anchorName: names.anchorName
+    };
+  });
+
+  syncAnchorPlacements(enriched, {
+    onRemove: ({ deviceId, anchorId }) => removePlacement(deviceId, anchorId)
+  });
+
+  refreshAnchorFeedback();
+}
+
+function removePlacement(deviceId, anchorId) {
+  const index = state.placements.findIndex(
+    (entry) => entry.deviceId === deviceId && entry.anchorId === anchorId
+  );
+  if (index === -1) {
+    return;
+  }
+
+  state.placements.splice(index, 1);
+  const { deviceName, anchorName } = formatPlacementNames(deviceId, anchorId);
+  pushStatus(`Removed ${deviceName} from ${anchorName}.`, 'info');
+  updateStagePlacements();
 }
 
 function attemptPlacement(deviceId, anchorId) {
@@ -101,6 +160,7 @@ function attemptPlacement(deviceId, anchorId) {
   state.placements.push({ deviceId, anchorId });
   const { deviceName, anchorName } = formatPlacementNames(deviceId, anchorId);
   pushStatus(`Placed ${deviceName} at ${anchorName}.`, 'success');
+  updateStagePlacements();
   return true;
 }
 
@@ -111,16 +171,6 @@ function bindStageInteractions() {
       return;
     }
     boundAnchorElements.add(anchorEl);
-
-    anchorEl.addEventListener('dragover', (event) => {
-      if (!state.pendingDeviceId) {
-        return;
-      }
-      event.preventDefault();
-      if (event.dataTransfer) {
-        event.dataTransfer.dropEffect = 'copy';
-      }
-    });
 
     anchorEl.addEventListener('drop', (event) => {
       event.preventDefault();
@@ -232,7 +282,13 @@ async function init(){
   state.catalog = await loadCatalog(catalogSource);
   state.placements = [];
   setPendingDevice(null);
-  renderAims(); renderDeviceList(); renderStageView(state.scenario); bindStageInteractions(); bindUI();
+  renderAims();
+  renderDeviceList();
+  renderStageView(state.scenario);
+  setAnchorFeedbackEvaluator(evaluatePlacementAllowance);
+  updateStagePlacements();
+  bindStageInteractions();
+  bindUI();
   pushStatus('Scenario loaded: ' + (state.scenario?.meta?.title || 'untitled'));
 }
 

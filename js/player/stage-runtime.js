@@ -9,6 +9,16 @@ const anchorElements = new Map();
 let resizeObserver = null;
 let windowResizeBound = false;
 
+const BADGE_OFFSETS_BY_COUNT = {
+  1: [{ x: 0, y: -42 }],
+  2: [{ x: -36, y: -34 }, { x: 36, y: -34 }],
+  3: [{ x: -36, y: -34 }, { x: 36, y: -34 }, { x: -36, y: 36 }],
+  4: [{ x: -36, y: -34 }, { x: 36, y: -34 }, { x: -36, y: 36 }, { x: 36, y: 36 }]
+};
+
+let anchorFeedbackEvaluator = null;
+let removePlacementHandler = null;
+
 function ensureStageElement(){
   if(stageEl && document.body.contains(stageEl)){
     return stageEl;
@@ -97,8 +107,12 @@ function createAnchorElement(anchor){
     root.appendChild(labelEl);
   }
 
+  const placementContainer = document.createElement('div');
+  placementContainer.className = 'anchor-hit__placements';
+  root.appendChild(placementContainer);
+
   layer.appendChild(root);
-  return { root, hit: dot, label: labelEl };
+  return { root, hit: dot, label: labelEl, placements: placementContainer };
 }
 
 function clamp01(value){
@@ -108,6 +122,24 @@ function clamp01(value){
   if(value < 0) return 0;
   if(value > 1) return 1;
   return value;
+}
+
+function computeBadgeOffsets(count){
+  const capped = Math.max(0, Math.min(count, 4));
+  const layout = BADGE_OFFSETS_BY_COUNT[capped] || [];
+  return layout.slice(0, capped);
+}
+
+function positionPlacementBadges(entry){
+  const container = entry?.placementContainer;
+  if(!container) return;
+  const badges = Array.from(container.children);
+  const offsets = computeBadgeOffsets(badges.length);
+  badges.forEach((badge, index) => {
+    const offset = offsets[index] || offsets[offsets.length - 1] || { x: 0, y: 0 };
+    badge.style.setProperty('--badge-offset-x', `${offset.x}px`);
+    badge.style.setProperty('--badge-offset-y', `${offset.y}px`);
+  });
 }
 
 function layoutAnchors(){
@@ -194,7 +226,202 @@ function layoutAnchors(){
         }
       }
     }
+
+    positionPlacementBadges(entry);
   }
+}
+
+function clearAnchorFeedback(entry){
+  if(!entry?.element) return;
+  entry.element.classList.remove('anchor-hit--allowed', 'anchor-hit--blocked');
+}
+
+function applyAnchorFeedback(entry){
+  if(!entry?.element || !entry.feedbackActive){
+    clearAnchorFeedback(entry);
+    return false;
+  }
+  if(typeof anchorFeedbackEvaluator !== 'function'){
+    clearAnchorFeedback(entry);
+    return false;
+  }
+  const evaluation = anchorFeedbackEvaluator(entry.anchor.id, entry);
+  if(!evaluation){
+    clearAnchorFeedback(entry);
+    return false;
+  }
+  const allowed = !!evaluation.allowed;
+  entry.element.classList.toggle('anchor-hit--allowed', allowed);
+  entry.element.classList.toggle('anchor-hit--blocked', !allowed);
+  return allowed;
+}
+
+function ensureAnchorFeedbackHandlers(anchorId){
+  const entry = anchorElements.get(anchorId);
+  if(!entry || entry.feedbackHandlers || !entry.element){
+    return;
+  }
+
+  const handleDragEnter = (event) => {
+    entry.feedbackActive = true;
+    const allowed = applyAnchorFeedback(entry);
+    if(allowed){
+      event.preventDefault();
+      if(event.dataTransfer){
+        event.dataTransfer.dropEffect = 'copy';
+      }
+    }
+  };
+
+  const handleDragOver = (event) => {
+    entry.feedbackActive = true;
+    const allowed = applyAnchorFeedback(entry);
+    if(allowed){
+      event.preventDefault();
+      if(event.dataTransfer){
+        event.dataTransfer.dropEffect = 'copy';
+      }
+    }
+  };
+
+  const handleDragLeave = () => {
+    entry.feedbackActive = false;
+    clearAnchorFeedback(entry);
+  };
+
+  const handleDrop = () => {
+    entry.feedbackActive = false;
+    clearAnchorFeedback(entry);
+  };
+
+  const handleFocus = () => {
+    entry.feedbackActive = true;
+    applyAnchorFeedback(entry);
+  };
+
+  const handleBlur = () => {
+    entry.feedbackActive = false;
+    clearAnchorFeedback(entry);
+  };
+
+  entry.element.addEventListener('dragenter', handleDragEnter);
+  entry.element.addEventListener('dragover', handleDragOver);
+  entry.element.addEventListener('dragleave', handleDragLeave);
+  entry.element.addEventListener('drop', handleDrop);
+  entry.element.addEventListener('focus', handleFocus);
+  entry.element.addEventListener('blur', handleBlur);
+
+  entry.feedbackHandlers = {
+    dragenter: handleDragEnter,
+    dragover: handleDragOver,
+    dragleave: handleDragLeave,
+    drop: handleDrop,
+    focus: handleFocus,
+    blur: handleBlur
+  };
+}
+
+function removeAnchorFeedbackHandlers(entry){
+  if(!entry?.feedbackHandlers || !entry.element){
+    return;
+  }
+  const handlers = entry.feedbackHandlers;
+  entry.element.removeEventListener('dragenter', handlers.dragenter);
+  entry.element.removeEventListener('dragover', handlers.dragover);
+  entry.element.removeEventListener('dragleave', handlers.dragleave);
+  entry.element.removeEventListener('drop', handlers.drop);
+  entry.element.removeEventListener('focus', handlers.focus);
+  entry.element.removeEventListener('blur', handlers.blur);
+  entry.feedbackHandlers = null;
+  entry.feedbackActive = false;
+  clearAnchorFeedback(entry);
+}
+
+export function refreshAnchorFeedback(){
+  for(const entry of anchorElements.values()){
+    if(entry.feedbackActive){
+      applyAnchorFeedback(entry);
+    } else {
+      clearAnchorFeedback(entry);
+    }
+  }
+}
+
+export function setAnchorFeedbackEvaluator(evaluator){
+  anchorFeedbackEvaluator = typeof evaluator === 'function' ? evaluator : null;
+  for(const [anchorId, entry] of anchorElements){
+    if(anchorFeedbackEvaluator){
+      ensureAnchorFeedbackHandlers(anchorId);
+    } else {
+      removeAnchorFeedbackHandlers(entry);
+    }
+  }
+  refreshAnchorFeedback();
+}
+
+export function syncAnchorPlacements(placements, options = {}){
+  removePlacementHandler = typeof options.onRemove === 'function' ? options.onRemove : null;
+
+  const grouped = new Map();
+  if(Array.isArray(placements)){
+    for(const placement of placements){
+      if(!placement || !placement.anchorId){
+        continue;
+      }
+      if(!grouped.has(placement.anchorId)){
+        grouped.set(placement.anchorId, []);
+      }
+      grouped.get(placement.anchorId).push(placement);
+    }
+  }
+
+  for(const [anchorId, entry] of anchorElements){
+    const container = entry.placementContainer;
+    if(!container) continue;
+    const anchorPlacements = (grouped.get(anchorId) || []).slice(0, 4);
+    container.innerHTML = '';
+    for(const placement of anchorPlacements){
+      const badge = document.createElement('button');
+      badge.type = 'button';
+      badge.className = 'anchor-hit__badge placed';
+      badge.dataset.anchorId = anchorId;
+      if(placement.deviceId){
+        badge.dataset.deviceId = placement.deviceId;
+      }
+      const deviceLabel = placement.deviceName || placement.deviceId || 'Device';
+      badge.textContent = deviceLabel;
+      const anchorLabel = placement.anchorName || entry.anchor.label || entry.anchor.id || '';
+      const accessibleLabel = anchorLabel
+        ? `Remove ${deviceLabel} from ${anchorLabel}`
+        : `Remove ${deviceLabel}`;
+      badge.setAttribute('aria-label', accessibleLabel);
+      badge.title = accessibleLabel;
+
+      const invokeRemove = () => {
+        if(typeof removePlacementHandler === 'function'){
+          removePlacementHandler({
+            deviceId: placement.deviceId,
+            anchorId,
+            deviceName: placement.deviceName,
+            anchorName: placement.anchorName
+          });
+        }
+      };
+
+      badge.addEventListener('click', invokeRemove);
+      badge.addEventListener('keydown', (event) => {
+        if(event.key === 'Enter' || event.key === ' '){
+          event.preventDefault();
+          invokeRemove();
+        }
+      });
+
+      container.appendChild(badge);
+    }
+    positionPlacementBadges(entry);
+  }
+
+  layoutAnchors();
 }
 
 function rebuildAnchors(){
@@ -213,12 +440,18 @@ function rebuildAnchors(){
       element: element.root,
       hitElement: element.hit,
       labelElement: element.label || null,
+      placementContainer: element.placements || null,
       anchor,
       x: 0,
       y: 0,
       relativeX: 0,
-      relativeY: 0
+      relativeY: 0,
+      feedbackActive: false,
+      feedbackHandlers: null
     });
+    if(anchorFeedbackEvaluator){
+      ensureAnchorFeedbackHandlers(anchor.id);
+    }
   }
   layoutAnchors();
 }
