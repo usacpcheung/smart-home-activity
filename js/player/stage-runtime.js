@@ -160,40 +160,41 @@ function positionPlacementBadges(entry, stageMetrics = lastStageMetrics){
   if(!container) return;
   const badges = Array.from(container.children);
   const offsets = computeBadgeOffsets(badges.length);
+  const metrics = stageMetrics || {};
+  const stageRect = metrics.rect;
+  const stageWidth = stageRect?.width || metrics.width || 0;
+  const stageHeight = stageRect?.height || metrics.height || 0;
+  const stagePadding = Number.isFinite(metrics.padding) ? metrics.padding : 0;
   badges.forEach((badge, index) => {
     const baseOffset = offsets[index] || offsets[offsets.length - 1] || { x: 0, y: 0 };
     let offsetX = baseOffset.x;
     let offsetY = baseOffset.y;
 
-    if(stageMetrics){
-      const stageWidth = stageMetrics.width;
-      const stageHeight = stageMetrics.height;
-      const stagePadding = stageMetrics.padding;
-      if(stageWidth && stageHeight){
-        const badgeWidth = badge.offsetWidth || badge.clientWidth || 64;
-        const badgeHeight = badge.offsetHeight || badge.clientHeight || 64;
-        const halfWidth = badgeWidth / 2;
-        const halfHeight = badgeHeight / 2;
-        const minX = stagePadding + halfWidth;
-        const maxX = stageWidth - stagePadding - halfWidth;
-        const minY = stagePadding + halfHeight;
-        const maxY = stageHeight - stagePadding - halfHeight;
-        const anchorX = entry.relativeX ?? 0;
-        const anchorY = entry.relativeY ?? 0;
-        let targetX = anchorX + offsetX;
-        let targetY = anchorY + offsetY;
+    if(stageWidth && stageHeight){
+      const badgeRect = badge.getBoundingClientRect();
+      const badgeWidth = badgeRect?.width || badge.offsetWidth || badge.clientWidth || 64;
+      const badgeHeight = badgeRect?.height || badge.offsetHeight || badge.clientHeight || 64;
+      const halfWidth = badgeWidth / 2;
+      const halfHeight = badgeHeight / 2;
+      const minX = stagePadding + halfWidth;
+      const maxX = stageWidth - stagePadding - halfWidth;
+      const minY = stagePadding + halfHeight;
+      const maxY = stageHeight - stagePadding - halfHeight;
+      const anchorX = entry.relativeX ?? 0;
+      const anchorY = entry.relativeY ?? 0;
+      let targetX = anchorX + offsetX;
+      let targetY = anchorY + offsetY;
 
-        if(targetX < minX){
-          offsetX += (minX - targetX);
-        } else if(targetX > maxX){
-          offsetX -= (targetX - maxX);
-        }
+      if(targetX < minX){
+        offsetX += (minX - targetX);
+      } else if(targetX > maxX){
+        offsetX -= (targetX - maxX);
+      }
 
-        if(targetY < minY){
-          offsetY += (minY - targetY);
-        } else if(targetY > maxY){
-          offsetY -= (targetY - maxY);
-        }
+      if(targetY < minY){
+        offsetY += (minY - targetY);
+      } else if(targetY > maxY){
+        offsetY -= (targetY - maxY);
       }
     }
 
@@ -239,8 +240,22 @@ function layoutAnchors(){
 
   const anchors = Array.isArray(lastScenario?.anchors) ? lastScenario.anchors : [];
   const layerRect = layer.getBoundingClientRect();
+  const overlayRect = overlay.getBoundingClientRect();
+  const rectSnapshot = overlayRect ? {
+    width: overlayRect.width,
+    height: overlayRect.height,
+    left: overlayRect.left,
+    top: overlayRect.top,
+    right: overlayRect.right,
+    bottom: overlayRect.bottom
+  } : null;
   const stagePadding = 8;
-  lastStageMetrics = { width, height, padding: stagePadding };
+  lastStageMetrics = {
+    width: rectSnapshot?.width || width,
+    height: rectSnapshot?.height || height,
+    padding: stagePadding,
+    rect: rectSnapshot
+  };
   for(const anchor of anchors){
     if(!anchor || !anchor.id) continue;
     const entry = anchorElements.get(anchor.id);
@@ -523,7 +538,7 @@ export function syncAnchorPlacements(placements, options = {}){
 
       container.appendChild(badge);
     }
-    positionPlacementBadges(entry);
+    positionPlacementBadges(entry, lastStageMetrics);
   }
 
   layoutAnchors();
