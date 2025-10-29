@@ -28,6 +28,17 @@
   <aside class="pane controls-pane">
     <h2>Controls</h2>
     <div id="statusMessages" class="status-messages" role="status" aria-live="polite"></div>
+    <form id="rulesetControls" class="ruleset-controls" aria-labelledby="rulesetControlsTitle">
+      <div class="ruleset-controls__header">
+        <h3 id="rulesetControlsTitle">Rulesets</h3>
+        <p class="ruleset-controls__hint">Select the combinations you believe are valid for this scenario.</p>
+      </div>
+      <fieldset class="ruleset-controls__fieldset">
+        <legend class="sr-only">Scenario rulesets</legend>
+        <p id="rulesetEmptyMessage" class="ruleset-controls__empty" hidden>No rulesets defined for this scenario.</p>
+        <ul id="rulesetList" class="ruleset-controls__list"></ul>
+      </fieldset>
+    </form>
     <div class="controls-stack">
       <button id="btnConnect">Connect All</button>
       <button id="btnSubmit">Submit My Design</button>
