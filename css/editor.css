@@ -252,6 +252,27 @@
   margin-bottom:12px;
 }
 
+.pane .row{
+  align-items:center;
+}
+
+#btnSaveScenario{
+  padding:6px 10px;
+  border-radius:4px;
+  border:1px solid #2563eb;
+  background:#2563eb;
+  color:#fff;
+  font-size:13px;
+  cursor:pointer;
+  flex:0 0 auto;
+  white-space:nowrap;
+}
+
+#btnSaveScenario:hover{
+  background:#1d4ed8;
+  border-color:#1d4ed8;
+}
+
 .ruleset-row{
   border:1px solid #cbd5f5;
   border-radius:8px;

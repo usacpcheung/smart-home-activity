@@ -25,7 +25,7 @@ function updateRulesValidation(checks){
   return rulesValidationState;
 }
 
-function getRulesValidationState(){
+export function getRulesValidationState(){
   return rulesValidationState;
 }
 
@@ -50,6 +50,11 @@ function setRulesNotice(message, variant = 'info', { duration = NOTICE_DEFAULT_D
 
 function getRulesNotice(){
   return rulesNotice;
+}
+
+export function showRulesNotice(message, variant = 'info', options){
+  setRulesNotice(message, variant, options);
+  renderRulesEditor();
 }
 
 function createClauseNode(overrides = {}){
