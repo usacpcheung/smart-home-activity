@@ -2,7 +2,8 @@ import { loadCatalog } from '../core/catalog.js';
 import { evaluate } from '../core/engine.js';
 import { validateRulesStructure } from '../core/rules.js';
 import { qs } from '../core/utils.js';
-import { renderStage as renderStageView, refreshAnchorFeedback, setAnchorFeedbackEvaluator, syncAnchorPlacements } from './stage-runtime.js';
+import { renderStage as renderStageView, refreshAnchorFeedback, setAnchorFeedbackEvaluator, setStageConnectionState, syncAnchorPlacements } from './stage-runtime.js';
+import { runEvaluationAnimations as dispatchEvaluationAnimations } from './animations.js';
 
 const STORED_SCENARIOS_KEY = 'uploadedScenarios';
 const DEFAULT_SCENARIO_URL = 'scenarios/case01/scenario.json';
@@ -15,7 +16,10 @@ const state = {
   pendingDeviceId: null,
   connected: false,
   scenarioUrl: '',
-  scenarioBase: ''
+  scenarioBase: '',
+  availableRulesets: [],
+  selectedRulesetIds: new Set(),
+  correctRulesetIds: new Set()
 };
 
 const boundAnchorElements = new WeakSet();
@@ -66,6 +70,316 @@ function playPlacementSound() {
 
   oscillator.start(startTime);
   oscillator.stop(startTime + duration);
+}
+
+function normalizeScenarioRulesets(rawRulesets) {
+  const entries = Array.isArray(rawRulesets) ? rawRulesets : [];
+  const usedIds = new Set();
+  let autoIndex = 1;
+
+  return entries.reduce((acc, entry) => {
+    if (!entry || typeof entry !== 'object') {
+      return acc;
+    }
+
+    const text = typeof entry.text === 'string' ? entry.text.trim() : '';
+    if (!text) {
+      return acc;
+    }
+
+    let id = typeof entry.id === 'string' ? entry.id.trim() : '';
+    if (!id) {
+      while (usedIds.has(`ruleset-${autoIndex}`)) {
+        autoIndex += 1;
+      }
+      id = `ruleset-${autoIndex}`;
+      autoIndex += 1;
+    }
+
+    if (usedIds.has(id)) {
+      let dedupe = 1;
+      let candidate = `${id}-${dedupe}`;
+      while (usedIds.has(candidate)) {
+        dedupe += 1;
+        candidate = `${id}-${dedupe}`;
+      }
+      id = candidate;
+    }
+
+    usedIds.add(id);
+
+    const correct = (() => {
+      if (entry.correct === true) {
+        return true;
+      }
+      if (typeof entry.correct === 'string') {
+        const normalized = entry.correct.trim().toLowerCase();
+        return normalized === 'true' || normalized === '1';
+      }
+      if (typeof entry.correct === 'number') {
+        return entry.correct === 1;
+      }
+      return false;
+    })();
+
+    acc.push({ id, text, correct });
+    return acc;
+  }, []);
+}
+
+function ensureSelectedRulesetSet() {
+  if (!(state.selectedRulesetIds instanceof Set)) {
+    state.selectedRulesetIds = new Set();
+  }
+  return state.selectedRulesetIds;
+}
+
+function ensureCorrectRulesetSet() {
+  if (!(state.correctRulesetIds instanceof Set)) {
+    state.correctRulesetIds = new Set();
+  }
+  return state.correctRulesetIds;
+}
+
+function getRulesetLabel(id) {
+  if (!id) {
+    return '';
+  }
+  const match = state.availableRulesets?.find?.((entry) => entry.id === id);
+  return typeof match?.text === 'string' && match.text.trim() ? match.text.trim() : id;
+}
+
+function formatRulesetNames(ids, { fallback = 'none selected' } = {}) {
+  const source = Array.isArray(ids) ? ids : [];
+  const labels = source
+    .map((id) => getRulesetLabel(id))
+    .map((label) => (typeof label === 'string' ? label.trim() : ''))
+    .filter((label) => label.length > 0);
+  if (!labels.length) {
+    return fallback;
+  }
+  return labels.join(', ');
+}
+
+function formatLockedRulesetMessage(rulesetId, wasSelected) {
+  const rulesetName = getRulesetLabel(rulesetId) || rulesetId || 'ruleset';
+  const statusWord = wasSelected ? 'active' : 'inactive';
+  return `Connect devices before changing rulesets. "${rulesetName}" remains ${statusWord}.`;
+}
+
+function onRulesetCheckboxChange(event) {
+  const checkbox = event.target;
+  if (!checkbox || checkbox.type !== 'checkbox') {
+    return;
+  }
+
+  const rulesetId = checkbox.dataset.rulesetId || checkbox.value;
+  if (!rulesetId) {
+    return;
+  }
+
+  const selectedSet = ensureSelectedRulesetSet();
+  const wasSelected = selectedSet.has(rulesetId);
+  if (!state.connected) {
+    checkbox.checked = wasSelected;
+    pushStatus(formatLockedRulesetMessage(rulesetId, wasSelected), 'warn');
+    return;
+  }
+
+  const label = getRulesetLabel(rulesetId) || rulesetId;
+  if (checkbox.checked) {
+    selectedSet.add(rulesetId);
+    pushStatus(`Activated ${label}.`, 'success');
+  } else {
+    selectedSet.delete(rulesetId);
+    pushStatus(`Deactivated ${label}.`, 'info');
+  }
+}
+
+function renderRulesets() {
+  const form = qs('#rulesetControls');
+  const list = qs('#rulesetList');
+  const emptyMessage = qs('#rulesetEmptyMessage');
+  if (!form || !list) {
+    return;
+  }
+
+  if (!form.dataset.rulesetLockMessageBound) {
+    form.addEventListener('click', (event) => {
+      if (state.connected) {
+        return;
+      }
+      const label = event.target.closest('.ruleset-controls__label');
+      if (!label) {
+        return;
+      }
+      const checkbox = label.querySelector('input[type="checkbox"]');
+      if (!checkbox) {
+        return;
+      }
+      event.preventDefault();
+      const rulesetId = checkbox.dataset.rulesetId || checkbox.value;
+      if (!rulesetId) {
+        return;
+      }
+      const selectedSet = ensureSelectedRulesetSet();
+      const wasSelected = selectedSet.has(rulesetId);
+      pushStatus(formatLockedRulesetMessage(rulesetId, wasSelected), 'warn');
+    });
+    form.dataset.rulesetLockMessageBound = 'true';
+  }
+
+  list.innerHTML = '';
+  const available = Array.isArray(state.availableRulesets) ? state.availableRulesets : [];
+  const hasRulesets = available.length > 0;
+
+  if (hasRulesets) {
+    form.classList.remove('ruleset-controls--empty');
+    if (emptyMessage) {
+      emptyMessage.hidden = true;
+    }
+    list.hidden = false;
+  } else {
+    form.classList.add('ruleset-controls--empty');
+    if (emptyMessage) {
+      emptyMessage.hidden = false;
+    }
+    list.hidden = true;
+    state.selectedRulesetIds = new Set();
+    state.correctRulesetIds = new Set();
+    updateRulesetInteractivity();
+    return;
+  }
+
+  const selectedSet = ensureSelectedRulesetSet();
+  const sanitizedSelection = new Set();
+  available.forEach((entry) => {
+    if (selectedSet.has(entry.id)) {
+      sanitizedSelection.add(entry.id);
+    }
+  });
+  state.selectedRulesetIds = sanitizedSelection;
+
+  available.forEach((entry) => {
+    const item = document.createElement('li');
+    item.className = 'ruleset-controls__item';
+
+    const label = document.createElement('label');
+    label.className = 'ruleset-controls__label';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.name = 'rulesets';
+    checkbox.value = entry.id;
+    checkbox.dataset.rulesetId = entry.id;
+    checkbox.checked = sanitizedSelection.has(entry.id);
+    checkbox.addEventListener('change', onRulesetCheckboxChange);
+
+    const text = document.createElement('span');
+    text.className = 'ruleset-controls__text';
+    text.textContent = entry.text;
+
+    label.append(checkbox, text);
+    item.appendChild(label);
+    list.appendChild(item);
+  });
+
+  updateRulesetInteractivity();
+}
+
+function updateRulesetInteractivity() {
+  const checkboxes = document.querySelectorAll('#rulesetList input[name="rulesets"]');
+  const locked = !state.connected;
+  checkboxes.forEach((checkbox) => {
+    checkbox.disabled = locked;
+    checkbox.classList.toggle('ruleset-controls__checkbox--locked', locked);
+    const label = checkbox.closest('.ruleset-controls__label');
+    if (label) {
+      label.classList.toggle('ruleset-controls__label--locked', locked);
+      if (locked) {
+        label.setAttribute('title', 'Connect devices before changing rulesets.');
+      } else {
+        label.removeAttribute('title');
+      }
+    }
+    const item = checkbox.closest('.ruleset-controls__item');
+    if (item) {
+      item.classList.toggle('ruleset-controls__item--locked', locked);
+    }
+  });
+}
+
+function evaluateRulesetSelection() {
+
+  const available = Array.isArray(state.availableRulesets) ? state.availableRulesets : [];
+  const availableIds = new Set(available.map((entry) => entry.id));
+
+  if (!available.length) {
+    return {
+      evaluated: false,
+      matched: true,
+      selectedIds: [],
+      correctIds: [],
+      missingIds: [],
+      extraIds: [],
+      selectedLabels: [],
+      correctLabels: [],
+      missingLabels: [],
+      extraLabels: []
+    };
+  }
+
+  const selectedSet = new Set();
+  ensureSelectedRulesetSet().forEach((id) => {
+    if (availableIds.has(id)) {
+      selectedSet.add(id);
+    }
+  });
+  state.selectedRulesetIds = new Set(selectedSet);
+
+  const correctSet = new Set();
+  ensureCorrectRulesetSet().forEach((id) => {
+    if (availableIds.has(id)) {
+      correctSet.add(id);
+    }
+  });
+  state.correctRulesetIds = new Set(correctSet);
+
+  const missingIds = Array.from(correctSet).filter((id) => !selectedSet.has(id));
+  const extraIds = Array.from(selectedSet).filter((id) => !correctSet.has(id));
+  const matched = missingIds.length === 0 && extraIds.length === 0 && correctSet.size === selectedSet.size;
+
+  const toLabels = (ids) => ids.map((id) => getRulesetLabel(id)).filter((label) => label.length > 0);
+
+  return {
+    evaluated: true,
+    matched,
+    selectedIds: Array.from(selectedSet),
+    correctIds: Array.from(correctSet),
+    missingIds,
+    extraIds,
+    selectedLabels: toLabels(Array.from(selectedSet)),
+    correctLabels: toLabels(Array.from(correctSet)),
+    missingLabels: toLabels(missingIds),
+    extraLabels: toLabels(extraIds)
+  };
+}
+
+function syncConnectButton(button) {
+  if (!button) {
+    return;
+  }
+  button.textContent = state.connected ? 'Disconnect All' : 'Connect All';
+  button.setAttribute('aria-pressed', state.connected ? 'true' : 'false');
+  const shouldLock = !state.connected && state.placements.length === 0;
+  button.disabled = shouldLock;
+  if (shouldLock) {
+    button.setAttribute('aria-disabled', 'true');
+    button.title = 'Place at least one device before connecting all.';
+  } else {
+    button.removeAttribute('aria-disabled');
+    button.removeAttribute('title');
+  }
 }
 
 function ensureStageVisibility() {
@@ -170,6 +484,11 @@ function updateStagePlacements() {
   });
 
   refreshAnchorFeedback();
+
+  const connectBtn = qs('#btnConnect');
+  if (connectBtn) {
+    syncConnectButton(connectBtn);
+  }
 }
 
 function removePlacement(deviceId, anchorId) {
@@ -184,6 +503,9 @@ function removePlacement(deviceId, anchorId) {
   const { deviceName, anchorName } = formatPlacementNames(deviceId, anchorId);
   pushStatus(`Removed ${deviceName} from ${anchorName}.`, 'info');
   updateStagePlacements();
+  if (!state.connected && state.placements.length === 0) {
+    pushStatus('Place at least one device to enable Connect All.', 'warn');
+  }
 }
 
 function attemptPlacement(deviceId, anchorId) {
@@ -222,11 +544,15 @@ function attemptPlacement(deviceId, anchorId) {
     return false;
   }
 
+  const hadPlacements = state.placements.length > 0;
   state.placements.push({ deviceId, anchorId });
   const { deviceName, anchorName } = formatPlacementNames(deviceId, anchorId);
   pushStatus(`Placed ${deviceName} at ${anchorName}.`, 'success');
   playPlacementSound();
   updateStagePlacements();
+  if (!state.connected && !hadPlacements && state.placements.length > 0) {
+    pushStatus('Connect All is now available.', 'info');
+  }
   return true;
 }
 
@@ -347,13 +673,20 @@ async function init(){
     });
   }
 
+  state.availableRulesets = normalizeScenarioRulesets(state.scenario?.rulesets);
+  state.correctRulesetIds = new Set(state.availableRulesets.filter((entry) => entry.correct).map((entry) => entry.id));
+  state.selectedRulesetIds = new Set();
+  state.connected = false;
+
   const catalogSource = state.scenario?.devicePool?.catalogSource || 'data/catalog/devices.json';
   state.catalog = await loadCatalog(catalogSource);
   state.placements = [];
   setPendingDevice(null);
+  renderRulesets();
   renderAims();
   renderDeviceList();
   renderStageView(state.scenario);
+  setStageConnectionState(state.connected);
   setAnchorFeedbackEvaluator(evaluatePlacementAllowance);
   updateStagePlacements();
   bindStageInteractions();
@@ -362,10 +695,31 @@ async function init(){
 }
 
 function renderAims(){
-  const ul = qs('#aimsList'); ul.innerHTML = '';
-  (state.scenario.aims||[]).forEach(a=>{
+  const ul = qs('#aimsList');
+  if (!ul) {
+    return;
+  }
+  ul.innerHTML = '';
+  const aims = Array.isArray(state.scenario?.aims) ? state.scenario.aims : [];
+  aims.forEach((aim) => {
+    if (!aim) {
+      return;
+    }
     const li = document.createElement('li');
-    li.textContent = a.text; li.dataset.aimId = a.id; ul.appendChild(li);
+    if (typeof aim.id === 'string' && aim.id) {
+      li.dataset.aimId = aim.id;
+    }
+
+    const marker = document.createElement('span');
+    marker.className = 'aims__marker';
+    marker.setAttribute('aria-hidden', 'true');
+
+    const text = document.createElement('span');
+    text.className = 'aims__text';
+    text.textContent = typeof aim.text === 'string' ? aim.text : '';
+
+    li.append(marker, text);
+    ul.appendChild(li);
   });
 }
 
@@ -492,9 +846,36 @@ function cloneScenarioData(data) {
 }
 
 function bindUI(){
-  qs('#btnConnect').addEventListener('click', ()=>{ state.connected = true; pushStatus('Devices marked as connected.'); /* AI TODO: small glow animation */ });
-  qs('#btnSubmit').addEventListener('click', onSubmit);
-  qs('#btnReset').addEventListener('click', ()=>location.reload());
+  const connectBtn = qs('#btnConnect');
+  if (connectBtn) {
+    connectBtn.addEventListener('click', () => {
+      state.connected = !state.connected;
+      setStageConnectionState(state.connected);
+      syncConnectButton(connectBtn);
+      updateRulesetInteractivity();
+      const selectedIds = Array.from(ensureSelectedRulesetSet());
+      const summary = formatRulesetNames(selectedIds, { fallback: 'none selected' });
+      const tone = state.connected ? 'success' : 'info';
+      const verb = state.connected ? 'connected' : 'disconnected';
+      const lockMessage = state.connected
+        ? 'Ruleset controls unlocked.'
+        : 'Ruleset controls locked until devices are connected.';
+      pushStatus(`Devices ${verb}. ${lockMessage} Active rulesets: ${summary}.`, tone);
+      updateStagePlacements();
+    });
+    syncConnectButton(connectBtn);
+    updateRulesetInteractivity();
+  }
+
+  const submitBtn = qs('#btnSubmit');
+  if (submitBtn) {
+    submitBtn.addEventListener('click', onSubmit);
+  }
+
+  const resetBtn = qs('#btnReset');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => location.reload());
+  }
 }
 
 function onSubmit(){
@@ -506,14 +887,50 @@ function onSubmit(){
     return;
   }
   const outcome = evaluate(state.scenario, state.placements, state.connected);
-  // AI TODO: call animations per aim (success/fail overlay); then mark aims ✔/✖ visually.
+  const rulesetResult = evaluateRulesetSelection();
   const { total, passed } = updateAimStatus(outcome);
-  if (total > 0) {
-    const tone = passed === total ? 'success' : 'warn';
-    pushStatus(`Evaluation complete: ${passed}/${total} aims satisfied.`, tone);
-  } else {
-    pushStatus('Evaluation complete.', 'info');
+  const baseMessage = total > 0
+    ? `Evaluation complete: ${passed}/${total} aims satisfied.`
+    : 'Evaluation complete.';
+
+  let message = baseMessage;
+  if (rulesetResult) {
+    if (!rulesetResult.evaluated) {
+      if (state.availableRulesets.length > 0) {
+        message += ' Ruleset selection not evaluated.';
+      } else {
+        message += ' No rulesets provided for this scenario.';
+      }
+    } else if (rulesetResult.matched) {
+      message += ' Ruleset selection correct.';
+    } else {
+      const detailParts = [];
+      if (rulesetResult.missingLabels.length) {
+        detailParts.push(`missing: ${rulesetResult.missingLabels.join(', ')}`);
+      }
+      if (rulesetResult.extraLabels.length) {
+        detailParts.push(`unexpected: ${rulesetResult.extraLabels.join(', ')}`);
+      }
+      const detailSuffix = detailParts.length ? ` (${detailParts.join('; ')})` : '';
+      message += ` Ruleset selection incorrect${detailSuffix}.`;
+    }
   }
+
+  let tone = 'info';
+  if (total > 0 && passed === total && (rulesetResult?.matched !== false)) {
+    tone = 'success';
+  } else if (rulesetResult && rulesetResult.evaluated && !rulesetResult.matched) {
+    tone = 'warn';
+  } else if (total > 0 && passed < total) {
+    tone = 'warn';
+  }
+
+  pushStatus(message.trim(), tone);
+
+  dispatchEvaluationAnimations({
+    aimOutcomes: outcome,
+    rulesetResult
+  });
 }
 
 function updateAimStatus(outcome){
@@ -525,6 +942,13 @@ function updateAimStatus(outcome){
   let passed = 0;
   items.forEach((li)=>{
     li.classList.remove('aim-pass', 'aim-fail');
+    delete li.dataset.aimResult;
+    const marker = li.querySelector('.aims__marker');
+    if (marker) {
+      marker.textContent = '';
+      marker.classList.remove('aims__marker--pass', 'aims__marker--fail');
+      delete marker.dataset.status;
+    }
     const aimId = li.dataset.aimId;
     if (!aimId) {
       return;
@@ -532,9 +956,21 @@ function updateAimStatus(outcome){
     const result = outcome?.[aimId];
     if (result === true) {
       li.classList.add('aim-pass');
+      li.dataset.aimResult = 'pass';
+      if (marker) {
+        marker.textContent = '✔';
+        marker.classList.add('aims__marker--pass');
+        marker.dataset.status = 'pass';
+      }
       passed += 1;
     } else if (result === false) {
       li.classList.add('aim-fail');
+      li.dataset.aimResult = 'fail';
+      if (marker) {
+        marker.textContent = '✖';
+        marker.classList.add('aims__marker--fail');
+        marker.dataset.status = 'fail';
+      }
     }
   });
   return { total: items.length, passed };
