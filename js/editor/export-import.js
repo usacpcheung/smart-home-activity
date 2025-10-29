@@ -2,7 +2,7 @@ import { downloadJson, pickJsonFile } from '../core/storage.js';
 import { validateScenario } from '../core/schema.js';
 import { qs } from '../core/utils.js';
 import { loadStageFromScenario } from './image-stage.js';
-import { renderAimsEditor, renderRulesEditor } from './aims-rules.js';
+import { renderAimsEditor, renderRulesEditor, renderRulesetsEditor } from './aims-rules.js';
 
 function showAlert(message) {
   if (typeof window !== 'undefined' && typeof window.alert === 'function') {
@@ -17,6 +17,9 @@ function exportScenario(state) {
   if (!scenario) {
     showAlert('No scenario loaded to export.');
     return;
+  }
+  if (!Array.isArray(scenario.rulesets)) {
+    scenario.rulesets = [];
   }
   downloadJson(scenario, 'scenario.json');
 }
@@ -53,6 +56,7 @@ function handleScenarioImport(json, state, helpers) {
   loadStageFromScenario();
   renderAimsEditor();
   renderRulesEditor();
+  renderRulesetsEditor();
 }
 
 export function initExportImport(state, helpers = {}) {
