@@ -200,7 +200,7 @@
 
 @media (min-width:1080px){
   .grid.editor-grid{
-    grid-template-columns:340px minmax(0,1fr);
+    grid-template-columns:400px minmax(0,1fr);
   }
 }
 
