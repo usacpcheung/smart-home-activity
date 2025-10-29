@@ -198,6 +198,18 @@
   font-family:inherit;
 }
 
+@media (min-width:1080px){
+  .grid.editor-grid{
+    grid-template-columns:400px minmax(0,1fr);
+  }
+}
+
+@media (max-width:1079px){
+  .grid.editor-grid{
+    grid-template-columns:minmax(0,1fr);
+  }
+}
+
 .aim-row__actions{
   display:flex;
   justify-content:flex-end;
@@ -250,6 +262,27 @@
 
 .rulesets-add{
   margin-bottom:12px;
+}
+
+.pane .row{
+  align-items:center;
+}
+
+#btnSaveScenario{
+  padding:6px 10px;
+  border-radius:4px;
+  border:1px solid #2563eb;
+  background:#2563eb;
+  color:#fff;
+  font-size:13px;
+  cursor:pointer;
+  flex:0 0 auto;
+  white-space:nowrap;
+}
+
+#btnSaveScenario:hover{
+  background:#1d4ed8;
+  border-color:#1d4ed8;
 }
 
 .ruleset-row{

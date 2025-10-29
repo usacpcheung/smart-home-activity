@@ -25,7 +25,7 @@ function updateRulesValidation(checks){
   return rulesValidationState;
 }
 
-function getRulesValidationState(){
+export function getRulesValidationState(){
   return rulesValidationState;
 }
 
@@ -50,6 +50,11 @@ function setRulesNotice(message, variant = 'info', { duration = NOTICE_DEFAULT_D
 
 function getRulesNotice(){
   return rulesNotice;
+}
+
+export function showRulesNotice(message, variant = 'info', options){
+  setRulesNotice(message, variant, options);
+  renderRulesEditor();
 }
 
 function createClauseNode(overrides = {}){
@@ -858,6 +863,20 @@ export function renderRulesEditor(){
   });
 }
 
+function updateRulesSectionTitle(aimId, aimText){
+  if(!aimId || !rulesPanel) return;
+  const sections = rulesPanel.querySelectorAll('.rules-section');
+  for(const section of sections){
+    if(section?.dataset?.aimId === aimId){
+      const headerTitle = section.querySelector('.rules-section__header h3');
+      if(headerTitle){
+        headerTitle.textContent = aimText ? aimText : aimId;
+      }
+      break;
+    }
+  }
+}
+
 function onAimsPanelInput(evt){
   const target = evt.target;
   if(!target || target.name !== 'aim-text') return;
@@ -866,8 +885,10 @@ function onAimsPanelInput(evt){
   const index = Number(row.dataset.index);
   const aims = stateRef?.scenario?.aims;
   if(!Array.isArray(aims) || !aims[index]) return;
-  aims[index].text = target.value;
+  const aim = aims[index];
+  aim.text = target.value;
   persistScenarioDraft();
+  updateRulesSectionTitle(aim.id, aim.text);
 }
 
 function onAimsPanelChange(evt){

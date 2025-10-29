@@ -2,7 +2,7 @@ import { loadCatalog } from '../core/catalog.js';
 import { saveLocal, loadLocal } from '../core/storage.js';
 import { qs } from '../core/utils.js';
 import { initStage, renderAnchorsPanel } from './image-stage.js';
-import { initAimsRules, renderRulesEditor } from './aims-rules.js';
+import { initAimsRules, renderRulesEditor, getRulesValidationState, showRulesNotice } from './aims-rules.js';
 import { initExportImport } from './export-import.js';
 
 const state = {
@@ -118,6 +118,17 @@ function persistScenarioDraft() {
   saveLocal('scenario', state.scenario);
 }
 
+export function saveScenarioDraft({ warnOnInvalidRules = true } = {}) {
+  persistScenarioDraft();
+  if (warnOnInvalidRules) {
+    const validation = typeof getRulesValidationState === 'function' ? getRulesValidationState() : null;
+    if (validation && validation.ok === false) {
+      const warningMessage = validation.message || 'Scenario saved, but rule validation reported issues. Review highlighted rules before exporting.';
+      showRulesNotice(warningMessage, 'warning', { duration: 6000 });
+    }
+  }
+}
+
 function setDeviceAllowed(deviceId, allowed) {
   const pool = state.scenario.devicePool;
   const allowedSet = new Set(pool.allowedDeviceIds);
@@ -156,12 +167,21 @@ async function init(){
   initStage(state, { persistScenarioDraft });
   initAimsRules(state, { persistScenarioDraft });
   initExportImport(state, { hydrateScenario, persistScenarioDraft, renderCatalog });
+  bindManualSaveControl();
   // AI TODO:
   // 1) implement image-stage loader (bgUpload → draw in #stage; store stage.background as filename)
   // 2) click-to-add anchors in stage (store normalized coords)
   // 3) anchors panel CRUD (label, type, accepts[])
   // 4) aims & rules editors (create checks per aim)
   // 5) persist scenario draft in localStorage
+}
+
+function bindManualSaveControl(){
+  const saveButton = qs('#btnSaveScenario');
+  if(!saveButton) return;
+  saveButton.addEventListener('click', () => {
+    saveScenarioDraft();
+  });
 }
 function renderCatalog(){
   const panel = qs('#catalogPanel');
