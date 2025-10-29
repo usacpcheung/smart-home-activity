@@ -173,10 +173,13 @@ function onRulesetCheckboxChange(event) {
   }
 
   const selectedSet = ensureSelectedRulesetSet();
+  const label = getRulesetLabel(rulesetId) || rulesetId;
   if (checkbox.checked) {
     selectedSet.add(rulesetId);
+    pushStatus(`Activated ${label}.`, 'success');
   } else {
     selectedSet.delete(rulesetId);
+    pushStatus(`Deactivated ${label}.`, 'info');
   }
 }
 
