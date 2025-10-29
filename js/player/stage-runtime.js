@@ -20,6 +20,7 @@ const BADGE_OFFSETS_BY_COUNT = {
 
 let anchorFeedbackEvaluator = null;
 let removePlacementHandler = null;
+let stageConnectionState = false;
 
 function ensureStageElement(){
   if(stageEl && document.body.contains(stageEl)){
@@ -107,7 +108,6 @@ function createAnchorElement(anchor){
 
   if(labelText){
     root.setAttribute('aria-label', labelText);
-    root.title = labelText;
   }
 
   root.tabIndex = 0;
@@ -138,6 +138,35 @@ function createAnchorElement(anchor){
 
   layer.appendChild(root);
   return { root, hit: dot, label: labelEl, placements: placementContainer };
+}
+
+function applyBadgeConnectionState(badge){
+  if(!badge) return;
+  const connected = stageConnectionState === true;
+  badge.classList.toggle('connected', connected);
+  badge.classList.toggle('online', connected);
+  badge.classList.toggle('disconnected', !connected);
+  badge.classList.toggle('offline', !connected);
+  badge.dataset.connectionState = connected ? 'connected' : 'disconnected';
+}
+
+function applyStageConnectionClass(){
+  const root = ensureStageElement();
+  if(!root) return;
+  const connected = stageConnectionState === true;
+  root.classList.toggle('stage--connected', connected);
+  root.classList.toggle('stage--disconnected', !connected);
+  root.dataset.connectionState = connected ? 'connected' : 'disconnected';
+}
+
+function refreshBadgeConnectionClasses(){
+  for(const entry of anchorElements.values()){
+    const container = entry?.placementContainer;
+    if(!container) continue;
+    for(const badge of container.children){
+      applyBadgeConnectionState(badge);
+    }
+  }
 }
 
 function clamp01(value){
@@ -853,12 +882,23 @@ export function syncAnchorPlacements(placements, options = {}){
         renderFallback();
       }
 
+      applyBadgeConnectionState(badge);
       container.appendChild(badge);
     }
     positionPlacementBadges(entry, lastStageMetrics);
   }
 
   layoutAnchors();
+}
+
+export function setStageConnectionState(connected){
+  stageConnectionState = connected === true;
+  applyStageConnectionClass();
+  refreshBadgeConnectionClasses();
+}
+
+export function getStageConnectionState(){
+  return stageConnectionState === true;
 }
 
 function rebuildAnchors(){
@@ -949,6 +989,7 @@ export function renderStage(scenario){
   }
   requestAnimationFrame(()=> layoutAnchors());
   bindResizeObservers();
+  applyStageConnectionClass();
 }
 
 export function getAnchorAtPoint(inputX, inputY){

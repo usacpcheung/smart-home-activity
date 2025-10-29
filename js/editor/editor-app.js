@@ -2,7 +2,7 @@ import { loadCatalog } from '../core/catalog.js';
 import { saveLocal, loadLocal } from '../core/storage.js';
 import { qs } from '../core/utils.js';
 import { initStage, renderAnchorsPanel } from './image-stage.js';
-import { initAimsRules, renderRulesEditor } from './aims-rules.js';
+import { initAimsRules, renderRulesEditor, getRulesValidationState, showRulesNotice } from './aims-rules.js';
 import { initExportImport } from './export-import.js';
 
 const state = {
@@ -19,6 +19,7 @@ function createDefaultScenario() {
     anchors: [],
     aims: [],
     rules: { requireConnectButton: true, checks: [] },
+    rulesets: [],
     animations: { success: {}, fail: 'redBlink' }
   };
 }
@@ -26,6 +27,57 @@ function createDefaultScenario() {
 function hydrateScenario(saved) {
   if (!saved) return createDefaultScenario();
   const base = createDefaultScenario();
+  const normalizeRulesets = rulesets => {
+    if (!Array.isArray(rulesets)) {
+      return [];
+    }
+
+    const usedIds = new Set();
+    let autoId = 1;
+
+    return rulesets.reduce((acc, entry) => {
+      if (!entry) return acc;
+
+      const text = typeof entry.text === 'string' ? entry.text.trim() : '';
+      if (!text) return acc;
+
+      let id = typeof entry.id === 'string' ? entry.id.trim() : '';
+      if (id) {
+        if (usedIds.has(id)) {
+          id = '';
+        }
+      }
+
+      if (!id) {
+        while (usedIds.has(`ruleset-${autoId}`)) {
+          autoId += 1;
+        }
+        id = `ruleset-${autoId}`;
+        autoId += 1;
+      }
+
+      usedIds.add(id);
+
+      const correct = (() => {
+        if (entry.correct === true) return true;
+        if (typeof entry.correct === 'string') {
+          return entry.correct.trim().toLowerCase() === 'true';
+        }
+        if (typeof entry.correct === 'number') {
+          return entry.correct === 1;
+        }
+        return false;
+      })();
+
+      acc.push({
+        id,
+        text,
+        correct
+      });
+      return acc;
+    }, []);
+  };
+
   const allowedIds = new Set(saved.devicePool?.allowedDeviceIds || base.devicePool.allowedDeviceIds);
   const sanitizedAnchors = Array.isArray(saved.anchors)
     ? saved.anchors.map(anchor => {
@@ -41,6 +93,7 @@ function hydrateScenario(saved) {
     : base.anchors;
 
   const { distractorIds, ...restPool } = saved.devicePool || {};
+  const sanitizedRulesets = normalizeRulesets(saved.rulesets);
 
   const scenario = {
     ...base,
@@ -54,7 +107,8 @@ function hydrateScenario(saved) {
     },
     rules: { ...base.rules, ...saved.rules },
     animations: { ...base.animations, ...saved.animations },
-    anchors: sanitizedAnchors
+    anchors: sanitizedAnchors,
+    rulesets: sanitizedRulesets
   };
 
   return scenario;
@@ -62,6 +116,17 @@ function hydrateScenario(saved) {
 
 function persistScenarioDraft() {
   saveLocal('scenario', state.scenario);
+}
+
+export function saveScenarioDraft({ warnOnInvalidRules = true } = {}) {
+  persistScenarioDraft();
+  if (warnOnInvalidRules) {
+    const validation = typeof getRulesValidationState === 'function' ? getRulesValidationState() : null;
+    if (validation && validation.ok === false) {
+      const warningMessage = validation.message || 'Scenario saved, but rule validation reported issues. Review highlighted rules before exporting.';
+      showRulesNotice(warningMessage, 'warning', { duration: 6000 });
+    }
+  }
 }
 
 function setDeviceAllowed(deviceId, allowed) {
@@ -102,12 +167,21 @@ async function init(){
   initStage(state, { persistScenarioDraft });
   initAimsRules(state, { persistScenarioDraft });
   initExportImport(state, { hydrateScenario, persistScenarioDraft, renderCatalog });
+  bindManualSaveControl();
   // AI TODO:
   // 1) implement image-stage loader (bgUpload → draw in #stage; store stage.background as filename)
   // 2) click-to-add anchors in stage (store normalized coords)
   // 3) anchors panel CRUD (label, type, accepts[])
   // 4) aims & rules editors (create checks per aim)
   // 5) persist scenario draft in localStorage
+}
+
+function bindManualSaveControl(){
+  const saveButton = qs('#btnSaveScenario');
+  if(!saveButton) return;
+  saveButton.addEventListener('click', () => {
+    saveScenarioDraft();
+  });
 }
 function renderCatalog(){
   const panel = qs('#catalogPanel');
