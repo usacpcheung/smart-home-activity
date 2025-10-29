@@ -19,6 +19,7 @@ function createDefaultScenario() {
     anchors: [],
     aims: [],
     rules: { requireConnectButton: true, checks: [] },
+    rulesets: [],
     animations: { success: {}, fail: 'redBlink' }
   };
 }
@@ -26,6 +27,57 @@ function createDefaultScenario() {
 function hydrateScenario(saved) {
   if (!saved) return createDefaultScenario();
   const base = createDefaultScenario();
+  const normalizeRulesets = rulesets => {
+    if (!Array.isArray(rulesets)) {
+      return [];
+    }
+
+    const usedIds = new Set();
+    let autoId = 1;
+
+    return rulesets.reduce((acc, entry) => {
+      if (!entry) return acc;
+
+      const text = typeof entry.text === 'string' ? entry.text.trim() : '';
+      if (!text) return acc;
+
+      let id = typeof entry.id === 'string' ? entry.id.trim() : '';
+      if (id) {
+        if (usedIds.has(id)) {
+          id = '';
+        }
+      }
+
+      if (!id) {
+        while (usedIds.has(`ruleset-${autoId}`)) {
+          autoId += 1;
+        }
+        id = `ruleset-${autoId}`;
+        autoId += 1;
+      }
+
+      usedIds.add(id);
+
+      const correct = (() => {
+        if (entry.correct === true) return true;
+        if (typeof entry.correct === 'string') {
+          return entry.correct.trim().toLowerCase() === 'true';
+        }
+        if (typeof entry.correct === 'number') {
+          return entry.correct === 1;
+        }
+        return false;
+      })();
+
+      acc.push({
+        id,
+        text,
+        correct
+      });
+      return acc;
+    }, []);
+  };
+
   const allowedIds = new Set(saved.devicePool?.allowedDeviceIds || base.devicePool.allowedDeviceIds);
   const sanitizedAnchors = Array.isArray(saved.anchors)
     ? saved.anchors.map(anchor => {
@@ -41,6 +93,7 @@ function hydrateScenario(saved) {
     : base.anchors;
 
   const { distractorIds, ...restPool } = saved.devicePool || {};
+  const sanitizedRulesets = normalizeRulesets(saved.rulesets);
 
   const scenario = {
     ...base,
@@ -54,7 +107,8 @@ function hydrateScenario(saved) {
     },
     rules: { ...base.rules, ...saved.rules },
     animations: { ...base.animations, ...saved.animations },
-    anchors: sanitizedAnchors
+    anchors: sanitizedAnchors,
+    rulesets: sanitizedRulesets
   };
 
   return scenario;
