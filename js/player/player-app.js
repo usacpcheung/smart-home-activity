@@ -2,7 +2,7 @@ import { loadCatalog } from '../core/catalog.js';
 import { evaluate } from '../core/engine.js';
 import { validateRulesStructure } from '../core/rules.js';
 import { qs } from '../core/utils.js';
-import { renderStage as renderStageView, refreshAnchorFeedback, setAnchorFeedbackEvaluator, syncAnchorPlacements } from './stage-runtime.js';
+import { renderStage as renderStageView, refreshAnchorFeedback, setAnchorFeedbackEvaluator, setStageConnectionState, syncAnchorPlacements } from './stage-runtime.js';
 import { runEvaluationAnimations as dispatchEvaluationAnimations } from './animations.js';
 
 const STORED_SCENARIOS_KEY = 'uploadedScenarios';
@@ -686,6 +686,7 @@ async function init(){
   renderAims();
   renderDeviceList();
   renderStageView(state.scenario);
+  setStageConnectionState(state.connected);
   setAnchorFeedbackEvaluator(evaluatePlacementAllowance);
   updateStagePlacements();
   bindStageInteractions();
@@ -849,6 +850,7 @@ function bindUI(){
   if (connectBtn) {
     connectBtn.addEventListener('click', () => {
       state.connected = !state.connected;
+      setStageConnectionState(state.connected);
       syncConnectButton(connectBtn);
       updateRulesetInteractivity();
       const selectedIds = Array.from(ensureSelectedRulesetSet());
@@ -940,10 +942,12 @@ function updateAimStatus(outcome){
   let passed = 0;
   items.forEach((li)=>{
     li.classList.remove('aim-pass', 'aim-fail');
+    delete li.dataset.aimResult;
     const marker = li.querySelector('.aims__marker');
     if (marker) {
       marker.textContent = '';
       marker.classList.remove('aims__marker--pass', 'aims__marker--fail');
+      delete marker.dataset.status;
     }
     const aimId = li.dataset.aimId;
     if (!aimId) {
@@ -952,16 +956,20 @@ function updateAimStatus(outcome){
     const result = outcome?.[aimId];
     if (result === true) {
       li.classList.add('aim-pass');
+      li.dataset.aimResult = 'pass';
       if (marker) {
         marker.textContent = '✔';
         marker.classList.add('aims__marker--pass');
+        marker.dataset.status = 'pass';
       }
       passed += 1;
     } else if (result === false) {
       li.classList.add('aim-fail');
+      li.dataset.aimResult = 'fail';
       if (marker) {
         marker.textContent = '✖';
         marker.classList.add('aims__marker--fail');
+        marker.dataset.status = 'fail';
       }
     }
   });
