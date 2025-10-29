@@ -1,5 +1,6 @@
 *{box-sizing:border-box} html,body{margin:0}
 body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;background:#f8fafc;color:#0f172a}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .bar{background:#0f172a;color:#fff;padding:10px 16px}
 .foot{font-size:12px;opacity:.8}
 .container{max-width:1000px;margin:16px auto;padding:0 12px}
@@ -15,10 +16,14 @@ body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;background:#f8fafc;c
 .overlay{position:absolute;inset:0;pointer-events:none}
 .aims{background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:8px;margin-bottom:8px}
 .aims ul{margin:8px 0 0;padding-left:18px}
-.aims li{margin-bottom:4px}
+.aims li{margin-bottom:4px;display:flex;align-items:flex-start;gap:8px}
 .aims li:last-child{margin-bottom:0}
 .aims li.aim-pass{color:#166534;font-weight:600}
 .aims li.aim-fail{color:#b91c1c;font-weight:600}
+.aims__marker{display:inline-flex;align-items:center;justify-content:center;width:1.5em;font-weight:600;color:#64748b;font-size:16px;line-height:1}
+.aims__marker--pass{color:#15803d}
+.aims__marker--fail{color:#b91c1c}
+.aims__text{flex:1;font-size:14px;line-height:1.4;color:inherit}
 .controls-pane{display:flex;flex-direction:column;gap:16px}
 .status-messages{flex:1;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:8px;min-height:140px;max-height:240px;overflow:auto;font-size:14px;line-height:1.4;color:#0f172a}
 .status-messages:empty::before{content:"Status updates will appear here.";color:#64748b}
@@ -31,6 +36,18 @@ body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;background:#f8fafc;c
 .controls-stack{display:flex;flex-direction:column;gap:10px}
 .controls-stack button{width:100%;padding:10px;font-size:15px}
 .controls-stack button+button{margin-left:0}
+.ruleset-controls{background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.ruleset-controls__header{display:flex;flex-direction:column;gap:4px}
+.ruleset-controls__header h3{margin:0;font-size:16px;font-weight:600;color:#0f172a}
+.ruleset-controls__hint{margin:0;font-size:13px;line-height:1.4;color:#475569}
+.ruleset-controls__fieldset{border:none;padding:0;margin:0}
+.ruleset-controls__list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.ruleset-controls__item{display:flex;align-items:flex-start}
+.ruleset-controls__label{display:flex;align-items:flex-start;gap:8px;font-size:14px;line-height:1.4;color:#1f2937}
+.ruleset-controls__label input[type=checkbox]{margin-top:2px}
+.ruleset-controls__text{flex:1;color:inherit}
+.ruleset-controls__empty{margin:0;font-size:13px;color:#64748b}
+.ruleset-controls--empty .ruleset-controls__list{display:none}
 .stored-scenarios-table{width:100%;border-collapse:collapse;margin-top:12px}
 .stored-scenarios-table th,.stored-scenarios-table td{border:1px solid #e5e7eb;padding:6px 8px;text-align:left;font-size:14px}
 .stored-scenarios-actions{display:flex;gap:8px}
