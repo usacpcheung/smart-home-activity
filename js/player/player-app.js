@@ -371,6 +371,15 @@ function syncConnectButton(button) {
   }
   button.textContent = state.connected ? 'Disconnect All' : 'Connect All';
   button.setAttribute('aria-pressed', state.connected ? 'true' : 'false');
+  const shouldLock = !state.connected && state.placements.length === 0;
+  button.disabled = shouldLock;
+  if (shouldLock) {
+    button.setAttribute('aria-disabled', 'true');
+    button.title = 'Place at least one device before connecting all.';
+  } else {
+    button.removeAttribute('aria-disabled');
+    button.removeAttribute('title');
+  }
 }
 
 function ensureStageVisibility() {
@@ -475,6 +484,11 @@ function updateStagePlacements() {
   });
 
   refreshAnchorFeedback();
+
+  const connectBtn = qs('#btnConnect');
+  if (connectBtn) {
+    syncConnectButton(connectBtn);
+  }
 }
 
 function removePlacement(deviceId, anchorId) {
@@ -489,6 +503,9 @@ function removePlacement(deviceId, anchorId) {
   const { deviceName, anchorName } = formatPlacementNames(deviceId, anchorId);
   pushStatus(`Removed ${deviceName} from ${anchorName}.`, 'info');
   updateStagePlacements();
+  if (!state.connected && state.placements.length === 0) {
+    pushStatus('Place at least one device to enable Connect All.', 'warn');
+  }
 }
 
 function attemptPlacement(deviceId, anchorId) {
@@ -527,11 +544,15 @@ function attemptPlacement(deviceId, anchorId) {
     return false;
   }
 
+  const hadPlacements = state.placements.length > 0;
   state.placements.push({ deviceId, anchorId });
   const { deviceName, anchorName } = formatPlacementNames(deviceId, anchorId);
   pushStatus(`Placed ${deviceName} at ${anchorName}.`, 'success');
   playPlacementSound();
   updateStagePlacements();
+  if (!state.connected && !hadPlacements && state.placements.length > 0) {
+    pushStatus('Connect All is now available.', 'info');
+  }
   return true;
 }
 
