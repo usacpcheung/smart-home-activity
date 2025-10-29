@@ -161,6 +161,12 @@ function formatRulesetNames(ids, { fallback = 'none selected' } = {}) {
   return labels.join(', ');
 }
 
+function formatLockedRulesetMessage(rulesetId, wasSelected) {
+  const rulesetName = getRulesetLabel(rulesetId) || rulesetId || 'ruleset';
+  const statusWord = wasSelected ? 'active' : 'inactive';
+  return `Connect devices before changing rulesets. "${rulesetName}" remains ${statusWord}.`;
+}
+
 function onRulesetCheckboxChange(event) {
   const checkbox = event.target;
   if (!checkbox || checkbox.type !== 'checkbox') {
@@ -173,6 +179,13 @@ function onRulesetCheckboxChange(event) {
   }
 
   const selectedSet = ensureSelectedRulesetSet();
+  const wasSelected = selectedSet.has(rulesetId);
+  if (!state.connected) {
+    checkbox.checked = wasSelected;
+    pushStatus(formatLockedRulesetMessage(rulesetId, wasSelected), 'warn');
+    return;
+  }
+
   const label = getRulesetLabel(rulesetId) || rulesetId;
   if (checkbox.checked) {
     selectedSet.add(rulesetId);
@@ -189,6 +202,31 @@ function renderRulesets() {
   const emptyMessage = qs('#rulesetEmptyMessage');
   if (!form || !list) {
     return;
+  }
+
+  if (!form.dataset.rulesetLockMessageBound) {
+    form.addEventListener('click', (event) => {
+      if (state.connected) {
+        return;
+      }
+      const label = event.target.closest('.ruleset-controls__label');
+      if (!label) {
+        return;
+      }
+      const checkbox = label.querySelector('input[type="checkbox"]');
+      if (!checkbox) {
+        return;
+      }
+      event.preventDefault();
+      const rulesetId = checkbox.dataset.rulesetId || checkbox.value;
+      if (!rulesetId) {
+        return;
+      }
+      const selectedSet = ensureSelectedRulesetSet();
+      const wasSelected = selectedSet.has(rulesetId);
+      pushStatus(formatLockedRulesetMessage(rulesetId, wasSelected), 'warn');
+    });
+    form.dataset.rulesetLockMessageBound = 'true';
   }
 
   list.innerHTML = '';
@@ -209,6 +247,7 @@ function renderRulesets() {
     list.hidden = true;
     state.selectedRulesetIds = new Set();
     state.correctRulesetIds = new Set();
+    updateRulesetInteractivity();
     return;
   }
 
@@ -244,9 +283,34 @@ function renderRulesets() {
     item.appendChild(label);
     list.appendChild(item);
   });
+
+  updateRulesetInteractivity();
+}
+
+function updateRulesetInteractivity() {
+  const checkboxes = document.querySelectorAll('#rulesetList input[name="rulesets"]');
+  const locked = !state.connected;
+  checkboxes.forEach((checkbox) => {
+    checkbox.disabled = locked;
+    checkbox.classList.toggle('ruleset-controls__checkbox--locked', locked);
+    const label = checkbox.closest('.ruleset-controls__label');
+    if (label) {
+      label.classList.toggle('ruleset-controls__label--locked', locked);
+      if (locked) {
+        label.setAttribute('title', 'Connect devices before changing rulesets.');
+      } else {
+        label.removeAttribute('title');
+      }
+    }
+    const item = checkbox.closest('.ruleset-controls__item');
+    if (item) {
+      item.classList.toggle('ruleset-controls__item--locked', locked);
+    }
+  });
 }
 
 function evaluateRulesetSelection() {
+
   const available = Array.isArray(state.availableRulesets) ? state.availableRulesets : [];
   const availableIds = new Set(available.map((entry) => entry.id));
 
@@ -765,14 +829,19 @@ function bindUI(){
     connectBtn.addEventListener('click', () => {
       state.connected = !state.connected;
       syncConnectButton(connectBtn);
+      updateRulesetInteractivity();
       const selectedIds = Array.from(ensureSelectedRulesetSet());
       const summary = formatRulesetNames(selectedIds, { fallback: 'none selected' });
       const tone = state.connected ? 'success' : 'info';
       const verb = state.connected ? 'connected' : 'disconnected';
-      pushStatus(`Devices ${verb}. Active rulesets: ${summary}.`, tone);
+      const lockMessage = state.connected
+        ? 'Ruleset controls unlocked.'
+        : 'Ruleset controls locked until devices are connected.';
+      pushStatus(`Devices ${verb}. ${lockMessage} Active rulesets: ${summary}.`, tone);
       updateStagePlacements();
     });
     syncConnectButton(connectBtn);
+    updateRulesetInteractivity();
   }
 
   const submitBtn = qs('#btnSubmit');

@@ -2,7 +2,7 @@
 .controls-pane .ruleset-controls{gap:12px}
 .controls-pane .ruleset-controls__list{max-height:180px;overflow:auto;padding-right:4px}
 .controls-pane .ruleset-controls__item{padding:4px 6px;border-radius:6px}
-.controls-pane .ruleset-controls__item:hover,.controls-pane .ruleset-controls__item:focus-within{background:rgba(226,232,240,.6)}
+.controls-pane .ruleset-controls__item:not(.ruleset-controls__item--locked):hover,.controls-pane .ruleset-controls__item:not(.ruleset-controls__item--locked):focus-within{background:rgba(226,232,240,.6)}
 .device-card:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
 .device-card__icon{width:48px;height:48px;flex:0 0 48px;border-radius:6px;object-fit:contain;background:#e2e8f0}
 .device-card__icon--missing{display:none}

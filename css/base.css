@@ -46,6 +46,10 @@ body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;background:#f8fafc;c
 .ruleset-controls__label{display:flex;align-items:flex-start;gap:8px;font-size:14px;line-height:1.4;color:#1f2937}
 .ruleset-controls__label input[type=checkbox]{margin-top:2px}
 .ruleset-controls__text{flex:1;color:inherit}
+.ruleset-controls__item--locked{opacity:.65}
+.ruleset-controls__label--locked{color:#94a3b8;cursor:not-allowed}
+.ruleset-controls__label--locked .ruleset-controls__text{color:inherit}
+.ruleset-controls__checkbox--locked{cursor:not-allowed}
 .ruleset-controls__empty{margin:0;font-size:13px;color:#64748b}
 .ruleset-controls--empty .ruleset-controls__list{display:none}
 .stored-scenarios-table{width:100%;border-collapse:collapse;margin-top:12px}
