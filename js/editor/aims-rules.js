@@ -5,11 +5,12 @@ let stateRef = null;
 let persistDraft = null;
 let aimsPanel = null;
 let rulesPanel = null;
-let listenersBound = false;
+let rulesetsPanel = null;
 
 const ROOT_PATH = 'root';
 const NOTICE_DEFAULT_DURATION = 4000;
 const MESSAGE_VARIANTS = new Set(['info', 'warning', 'error', 'success']);
+const MAX_AIMS = 3;
 
 let rulesValidationState = { ok: true, message: '', issues: [] };
 let rulesNotice = null;
@@ -214,20 +215,28 @@ function ensurePanels(){
   if(!aimsPanel){
     aimsPanel = qs('#aimsPanel');
   }
+  if(aimsPanel && aimsPanel.dataset.listenersAttached !== 'true'){
+    aimsPanel.addEventListener('input', onAimsPanelInput);
+    aimsPanel.addEventListener('change', onAimsPanelChange);
+    aimsPanel.addEventListener('click', onAimsPanelClick);
+    aimsPanel.dataset.listenersAttached = 'true';
+  }
   if(!rulesPanel){
     rulesPanel = qs('#rulesPanel');
   }
-  if(!listenersBound){
-    if(aimsPanel){
-      aimsPanel.addEventListener('input', onAimsPanelInput);
-      aimsPanel.addEventListener('change', onAimsPanelChange);
-      aimsPanel.addEventListener('click', onAimsPanelClick);
-    }
-    if(rulesPanel){
-      rulesPanel.addEventListener('change', onRulesPanelChange);
-      rulesPanel.addEventListener('click', onRulesPanelClick);
-    }
-    listenersBound = true;
+  if(rulesPanel && rulesPanel.dataset.listenersAttached !== 'true'){
+    rulesPanel.addEventListener('change', onRulesPanelChange);
+    rulesPanel.addEventListener('click', onRulesPanelClick);
+    rulesPanel.dataset.listenersAttached = 'true';
+  }
+  if(!rulesetsPanel){
+    rulesetsPanel = qs('#rulesetsPanel');
+  }
+  if(rulesetsPanel && rulesetsPanel.dataset.listenersAttached !== 'true'){
+    rulesetsPanel.addEventListener('input', onRulesetsPanelInput);
+    rulesetsPanel.addEventListener('change', onRulesetsPanelChange);
+    rulesetsPanel.addEventListener('click', onRulesetsPanelClick);
+    rulesetsPanel.dataset.listenersAttached = 'true';
   }
 }
 
@@ -237,6 +246,7 @@ export function initAimsRules(state, { persistScenarioDraft: persist } = {}){
   ensurePanels();
   renderAimsEditor();
   renderRulesEditor();
+  renderRulesetsEditor();
 }
 
 function getScenario(){
@@ -392,7 +402,186 @@ export function renderAimsEditor(){
   addBtn.dataset.action = 'add-aim';
   addBtn.className = 'aims-add';
   addBtn.textContent = 'Add aim';
+  const limitReached = aims.length >= MAX_AIMS;
+  addBtn.disabled = limitReached;
+  addBtn.setAttribute('aria-disabled', limitReached ? 'true' : 'false');
+  if(limitReached){
+    addBtn.title = `You can create up to ${MAX_AIMS} aims.`;
+  } else {
+    addBtn.removeAttribute('title');
+  }
   aimsPanel.appendChild(addBtn);
+
+  if(limitReached){
+    const limitMessage = document.createElement('p');
+    limitMessage.className = 'aims-limit-message';
+    limitMessage.textContent = `You can add up to ${MAX_AIMS} aims. Remove an aim to add another.`;
+    aimsPanel.appendChild(limitMessage);
+  }
+}
+
+function generateRulesetId(existingIds, startFrom = 1){
+  const used = existingIds instanceof Set ? existingIds : new Set(existingIds || []);
+  let counter = Math.max(startFrom, 1);
+  let candidate = `ruleset-${counter}`;
+  while(used.has(candidate)){
+    counter += 1;
+    candidate = `ruleset-${counter}`;
+  }
+  return { id: candidate, next: counter + 1 };
+}
+
+function ensureRulesetsStructure(){
+  const scenario = getScenario();
+  if(!scenario) return [];
+  if(!Array.isArray(scenario.rulesets)){
+    scenario.rulesets = [];
+  }
+  const rulesets = scenario.rulesets;
+  const used = new Set();
+  let autoId = 1;
+  for(let i = 0; i < rulesets.length; i += 1){
+    const entry = rulesets[i] && typeof rulesets[i] === 'object' ? rulesets[i] : {};
+    let id = typeof entry.id === 'string' ? entry.id.trim() : '';
+    if(!id || used.has(id)){
+      const generated = generateRulesetId(used, autoId);
+      id = generated.id;
+      autoId = generated.next;
+    }
+    used.add(id);
+    autoId = Math.max(autoId, used.size + 1);
+    rulesets[i] = {
+      id,
+      text: typeof entry.text === 'string' ? entry.text : '',
+      correct: entry.correct === true
+    };
+  }
+  return rulesets;
+}
+
+function createRulesetRow(ruleset, index){
+  const row = document.createElement('div');
+  row.className = 'ruleset-row';
+  row.dataset.index = String(index);
+  row.dataset.id = ruleset.id;
+
+  const header = document.createElement('div');
+  header.className = 'ruleset-row__header';
+  const idLabel = document.createElement('span');
+  idLabel.className = 'ruleset-id';
+  idLabel.textContent = ruleset.id;
+  header.appendChild(idLabel);
+
+  const deleteBtn = document.createElement('button');
+  deleteBtn.type = 'button';
+  deleteBtn.dataset.action = 'delete-ruleset';
+  deleteBtn.textContent = 'Remove';
+  header.appendChild(deleteBtn);
+  row.appendChild(header);
+
+  const textField = document.createElement('label');
+  textField.className = 'ruleset-field ruleset-field--text';
+  const textLabel = document.createElement('span');
+  textLabel.className = 'ruleset-field__label';
+  textLabel.textContent = 'Rule text';
+  const textarea = document.createElement('textarea');
+  textarea.name = 'ruleset-text';
+  textarea.rows = 3;
+  textarea.value = ruleset.text || '';
+  textField.appendChild(textLabel);
+  textField.appendChild(textarea);
+  row.appendChild(textField);
+
+  const toggleField = document.createElement('label');
+  toggleField.className = 'ruleset-field ruleset-field--toggle';
+  const toggleInput = document.createElement('input');
+  toggleInput.type = 'checkbox';
+  toggleInput.name = 'ruleset-correct';
+  toggleInput.checked = ruleset.correct === true;
+  toggleField.appendChild(toggleInput);
+  const toggleText = document.createElement('span');
+  toggleText.className = 'ruleset-field__label';
+  toggleText.textContent = 'Mark as correct';
+  toggleField.appendChild(toggleText);
+  row.appendChild(toggleField);
+
+  return row;
+}
+
+export function renderRulesetsEditor(){
+  ensurePanels();
+  if(!rulesetsPanel) return;
+  const scenario = getScenario();
+  rulesetsPanel.innerHTML = '';
+  if(!scenario){
+    rulesetsPanel.textContent = 'No scenario loaded.';
+    return;
+  }
+
+  const rulesets = ensureRulesetsStructure();
+  if(rulesets.length === 0){
+    const empty = document.createElement('p');
+    empty.className = 'rulesets-empty';
+    empty.textContent = 'No rulesets yet. Add one to define acceptable rule combinations.';
+    rulesetsPanel.appendChild(empty);
+  }
+
+  rulesets.forEach((ruleset, index) => {
+    rulesetsPanel.appendChild(createRulesetRow(ruleset, index));
+  });
+
+  const actions = document.createElement('div');
+  actions.className = 'rulesets-actions';
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.dataset.action = 'add-ruleset';
+  addBtn.className = 'rulesets-add';
+  addBtn.textContent = 'Add ruleset';
+  actions.appendChild(addBtn);
+  rulesetsPanel.appendChild(actions);
+}
+
+function addRuleset(){
+  const scenario = getScenario();
+  if(!scenario) return;
+  const rulesets = ensureRulesetsStructure();
+  const used = new Set(rulesets.map(entry => entry.id));
+  const generated = generateRulesetId(used, used.size + 1);
+  const newEntry = { id: generated.id, text: '', correct: false };
+  rulesets.push(newEntry);
+  persistScenarioDraft();
+  renderRulesetsEditor();
+}
+
+function removeRuleset(index){
+  const scenario = getScenario();
+  if(!scenario) return;
+  const rulesets = ensureRulesetsStructure();
+  if(index < 0 || index >= rulesets.length) return;
+  rulesets.splice(index, 1);
+  persistScenarioDraft();
+  renderRulesetsEditor();
+}
+
+function setRulesetCorrect(index, value){
+  const scenario = getScenario();
+  if(!scenario) return;
+  const rulesets = ensureRulesetsStructure();
+  if(index < 0 || index >= rulesets.length) return;
+  const normalized = value === true;
+  if(rulesets[index].correct === normalized) return;
+  rulesets[index].correct = normalized;
+  persistScenarioDraft();
+}
+
+function updateRulesetText(index, text){
+  const scenario = getScenario();
+  if(!scenario) return;
+  const rulesets = ensureRulesetsStructure();
+  if(index < 0 || index >= rulesets.length) return;
+  if(rulesets[index].text === text) return;
+  rulesets[index].text = text;
+  persistScenarioDraft();
 }
 
 function createClauseRow(aimId, clause, path, options){
@@ -727,6 +916,43 @@ function onAimsPanelClick(evt){
   }
 }
 
+function onRulesetsPanelInput(evt){
+  const target = evt.target;
+  if(!target || target.name !== 'ruleset-text') return;
+  const row = target.closest('.ruleset-row');
+  if(!row) return;
+  const index = Number(row.dataset.index);
+  updateRulesetText(index, target.value);
+}
+
+function onRulesetsPanelChange(evt){
+  const target = evt.target;
+  if(!target) return;
+  if(target.name === 'ruleset-correct'){
+    const row = target.closest('.ruleset-row');
+    if(!row) return;
+    const index = Number(row.dataset.index);
+    setRulesetCorrect(index, target.checked);
+  }
+}
+
+function onRulesetsPanelClick(evt){
+  const target = evt.target;
+  if(!target || !target.dataset) return;
+  const action = target.dataset.action;
+  if(action === 'add-ruleset'){
+    evt.preventDefault();
+    addRuleset();
+  } else if(action === 'delete-ruleset'){
+    evt.preventDefault();
+    const row = target.closest('.ruleset-row');
+    const index = row ? Number(row.dataset.index) : -1;
+    if(Number.isInteger(index) && index >= 0){
+      removeRuleset(index);
+    }
+  }
+}
+
 function addAim(){
   const scenario = getScenario();
   if(!scenario) return;
@@ -734,6 +960,10 @@ function addAim(){
     scenario.aims = [];
   }
   const aims = scenario.aims;
+  if(aims.length >= MAX_AIMS){
+    renderAimsEditor();
+    return;
+  }
   let counter = aims.length + 1;
   let newId = `aim_${counter}`;
   const existingIds = new Set(aims.map(a => a.id));
