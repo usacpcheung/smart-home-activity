@@ -44,7 +44,7 @@ function ensurePlacementAudioContext() {
   return placementAudioContext;
 }
 
-function playPlacementSound() {
+async function playPlacementSound() {
   const fallback = () => {
     const ctx = ensurePlacementAudioContext();
     if (!ctx) {
@@ -79,9 +79,7 @@ function playPlacementSound() {
     try {
       const playback = state.audioManager.playPlacement();
       if (playback && typeof playback.then === 'function') {
-        playback.catch(() => {
-          fallback();
-        });
+        await playback;
         return;
       }
       if (playback) {

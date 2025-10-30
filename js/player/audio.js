@@ -148,13 +148,50 @@ function createAudioManager(manifest, baseUrl) {
     if (!audio) {
       return null;
     }
+    const ready = new Promise((resolve, reject) => {
+      const cleanup = () => {
+        audio.removeEventListener('canplaythrough', onReady);
+        audio.removeEventListener('error', onError);
+      };
+      const onReady = () => {
+        cleanup();
+        resolve(audio);
+      };
+      const onError = (event) => {
+        cleanup();
+        const error = event?.error instanceof Error
+          ? event.error
+          : new Error(`Failed to buffer audio clip: ${url}`);
+        reject(error);
+      };
+      audio.addEventListener('canplaythrough', onReady, { once: true });
+      audio.addEventListener('error', onError, { once: true });
+
+      const haveEnoughData = typeof audio.HAVE_ENOUGH_DATA === 'number'
+        ? audio.HAVE_ENOUGH_DATA
+        : 4;
+      if (typeof audio.readyState === 'number' && audio.readyState >= haveEnoughData) {
+        cleanup();
+        resolve(audio);
+        return;
+      }
+
+      try {
+        audio.load();
+      } catch (error) {
+        cleanup();
+        reject(error instanceof Error ? error : new Error(`Failed to load audio clip: ${url}`));
+      }
+    });
+    ready.catch(() => {});
     audio.addEventListener('ended', () => {
       if (currentClip === audio) {
         currentClip = null;
       }
     });
-    audioCache.set(url, audio);
-    return audio;
+    const entry = { audio, ready };
+    audioCache.set(url, entry);
+    return entry;
   }
 
   function stopClip(clip) {
@@ -178,33 +215,54 @@ function createAudioManager(manifest, baseUrl) {
     if (!url) {
       return null;
     }
-    const audio = ensureClip(url);
-    if (!audio) {
+    const entry = ensureClip(url);
+    if (!entry) {
       return null;
     }
-    if (currentClip && currentClip !== audio) {
-      stopClip(currentClip);
-    }
-    currentClip = audio;
-    stopClip(audio);
-    let playResult;
-    try {
-      playResult = audio.play();
-    } catch (error) {
-      currentClip = null;
-      console.warn(`Audio playback threw for ${key}`, error);
-      return Promise.reject(error);
-    }
-    if (playResult && typeof playResult.then === 'function') {
-      return playResult.catch((error) => {
+    const { audio, ready } = entry;
+    const playback = (async () => {
+      if (currentClip && currentClip !== audio) {
+        stopClip(currentClip);
+        currentClip = null;
+      }
+
+      try {
+        await ready;
+      } catch (error) {
         if (currentClip === audio) {
           currentClip = null;
         }
-        console.warn(`Audio playback failed for ${key}`, error);
         throw error;
-      });
-    }
-    return Promise.resolve();
+      }
+
+      currentClip = audio;
+      stopClip(audio);
+
+      let playResult;
+      try {
+        playResult = audio.play();
+      } catch (error) {
+        if (currentClip === audio) {
+          currentClip = null;
+        }
+        console.warn(`Audio playback threw for ${key}`, error);
+        throw error;
+      }
+
+      if (playResult && typeof playResult.then === 'function') {
+        try {
+          await playResult;
+        } catch (error) {
+          if (currentClip === audio) {
+            currentClip = null;
+          }
+          console.warn(`Audio playback failed for ${key}`, error);
+          throw error;
+        }
+      }
+    })();
+
+    return playback;
   }
 
   function firstAvailableClip() {
@@ -218,7 +276,8 @@ function createAudioManager(manifest, baseUrl) {
     for (const key of preferredOrder) {
       const url = clipSources.get(key);
       if (url) {
-        return ensureClip(url);
+        const entry = ensureClip(url);
+        return entry ? entry.audio : null;
       }
     }
     return null;
