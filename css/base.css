@@ -5,7 +5,6 @@ body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;background:#f8fafc;c
 .bar--header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .bar--header h1{margin:0}
 .foot{font-size:12px;opacity:.8}
-a:not(.btn):hover,a:not(.btn):focus{color:#0f172a;text-decoration:underline}
 .container{max-width:1000px;margin:16px auto;padding:0 12px}
 .card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin-bottom:12px}
 .row{display:flex;gap:8px;flex-wrap:wrap}
