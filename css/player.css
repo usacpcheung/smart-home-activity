@@ -24,6 +24,7 @@
 .anchor-hit__dot::after{content:"";position:absolute;inset:-6px;border-radius:inherit;box-shadow:0 0 0 2px rgba(255,255,255,.45);pointer-events:none}
 .anchor-hit__placements{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:10}
 .anchor-hit__badge{position:absolute;transform:translate(-50%,-50%) translate(var(--badge-offset-x,0px),var(--badge-offset-y,0px));pointer-events:auto;cursor:pointer;width:64px;height:64px;display:flex;align-items:center;justify-content:center;padding:0;border:none;background:transparent;border-radius:18px;box-sizing:border-box;overflow:hidden}
+.anchor-hit__badge:hover,.anchor-hit__badge:focus-visible{transform:translate(-50%,-50%) translate(var(--badge-offset-x,0px),var(--badge-offset-y,0px))}
 .anchor-hit__badge::after{content:"";position:absolute;inset:-8px;border-radius:inherit;border:2px solid transparent;opacity:0;pointer-events:none;transition:border-color .3s ease}
 .anchor-hit__badge.anchor-hit__badge-card{background:color-mix(in srgb,#ffffff 92%,var(--color-surface-muted) 8%);border:1px solid rgba(15,23,42,.12);box-shadow:0 14px 30px rgba(15,23,42,.16),0 6px 12px rgba(15,23,42,.12);padding:10px;border-radius:18px}
 .anchor-hit__badge:focus-visible{outline:2px solid var(--color-primary);outline-offset:4px}
