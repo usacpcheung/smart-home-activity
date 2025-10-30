@@ -4,6 +4,7 @@ import { validateRulesStructure } from '../core/rules.js';
 import { qs } from '../core/utils.js';
 import { renderStage as renderStageView, refreshAnchorFeedback, setAnchorFeedbackEvaluator, setStageConnectionState, syncAnchorPlacements } from './stage-runtime.js';
 import { runEvaluationAnimations as dispatchEvaluationAnimations } from './animations.js';
+import { createAudioManager } from './audio.js';
 
 const STORED_SCENARIOS_KEY = 'uploadedScenarios';
 const DEFAULT_SCENARIO_URL = 'scenarios/case01/scenario.json';
@@ -19,7 +20,8 @@ const state = {
   scenarioBase: '',
   availableRulesets: [],
   selectedRulesetIds: new Set(),
-  correctRulesetIds: new Set()
+  correctRulesetIds: new Set(),
+  audioManager: null
 };
 
 const boundAnchorElements = new WeakSet();
@@ -42,34 +44,53 @@ function ensurePlacementAudioContext() {
   return placementAudioContext;
 }
 
-function playPlacementSound() {
-  const ctx = ensurePlacementAudioContext();
-  if (!ctx) {
-    return;
-  }
+async function playPlacementSound() {
+  const fallback = () => {
+    const ctx = ensurePlacementAudioContext();
+    if (!ctx) {
+      return;
+    }
 
-  const startTime = ctx.currentTime;
-  const duration = 0.08;
+    const startTime = ctx.currentTime;
+    const duration = 0.08;
 
-  const oscillator = ctx.createOscillator();
-  oscillator.type = 'sine';
-  oscillator.frequency.setValueAtTime(420, startTime);
+    const oscillator = ctx.createOscillator();
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(420, startTime);
 
-  const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.0001, startTime);
-  gain.gain.exponentialRampToValueAtTime(0.35, startTime + 0.01);
-  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.35, startTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
 
-  oscillator.connect(gain);
-  gain.connect(ctx.destination);
+    oscillator.connect(gain);
+    gain.connect(ctx.destination);
 
-  oscillator.onended = () => {
-    oscillator.disconnect();
-    gain.disconnect();
+    oscillator.onended = () => {
+      oscillator.disconnect();
+      gain.disconnect();
+    };
+
+    oscillator.start(startTime);
+    oscillator.stop(startTime + duration);
   };
 
-  oscillator.start(startTime);
-  oscillator.stop(startTime + duration);
+  if (state.audioManager) {
+    try {
+      const playback = state.audioManager.playPlacement();
+      if (playback) {
+        const { started } = playback;
+        if (started && typeof started.then === 'function') {
+          await started;
+        }
+        return;
+      }
+    } catch (error) {
+      console.warn('Placement audio manager failed', error);
+    }
+  }
+
+  fallback();
 }
 
 function normalizeScenarioRulesets(rawRulesets) {
@@ -517,6 +538,9 @@ function attemptPlacement(deviceId, anchorId) {
     pushStatus('Anchor not recognized for placement.', 'error');
     return false;
   }
+  if (state.audioManager) {
+    state.audioManager.unlock();
+  }
   const anchor = findAnchor(anchorId);
   if (!anchor) {
     pushStatus('Anchor not recognized for placement.', 'error');
@@ -635,6 +659,11 @@ function bindDeviceCardInteractions(card, device) {
 }
 
 async function init(){
+  if (state.audioManager) {
+    state.audioManager.reset();
+    state.audioManager = null;
+  }
+
   const params = new URL(location.href).searchParams;
   const storedSlotId = params.get('storedSlot');
   let scenarioInfo = null;
@@ -664,6 +693,8 @@ async function init(){
   state.scenario = scenarioInfo.scenario;
   state.scenarioUrl = scenarioInfo.url;
   state.scenarioBase = scenarioInfo.baseUrl;
+
+  state.audioManager = createAudioManager(state.scenario?.audio, state.scenarioBase);
 
   if (state.scenario) {
     Object.defineProperty(state.scenario, '__baseUrl', {
@@ -878,7 +909,7 @@ function bindUI(){
   }
 }
 
-function onSubmit(){
+async function onSubmit(){
   const validation = validateRulesStructure(state.scenario?.rules?.checks || []);
   if(!validation.ok){
     const message = validation.message || 'Rules contain unsupported nested groups. Unable to evaluate.';
@@ -927,10 +958,74 @@ function onSubmit(){
 
   pushStatus(message.trim(), tone);
 
-  dispatchEvaluationAnimations({
-    aimOutcomes: outcome,
-    rulesetResult
-  });
+  const audioManager = state.audioManager;
+
+  const awaitPlayback = async (playback, warningLabel) => {
+    if (!playback) {
+      return;
+    }
+    const { finished, started } = playback;
+    let target = null;
+    if (finished && typeof finished.then === 'function') {
+      target = finished;
+    } else if (started && typeof started.then === 'function') {
+      target = started;
+    }
+    if (!target) {
+      return;
+    }
+    try {
+      await target;
+    } catch (error) {
+      if (warningLabel) {
+        console.warn(warningLabel, error);
+      }
+    }
+  };
+
+  try {
+    await dispatchEvaluationAnimations({
+      aimOutcomes: outcome,
+      rulesetResult,
+      onAimReveal: async (entry) => {
+        if (!audioManager) {
+          return;
+        }
+        let playback = null;
+        try {
+          playback = audioManager.playAim({ passed: entry.result === 'pass' });
+        } catch (error) {
+          console.warn('Aim audio playback failed', error);
+          return;
+        }
+        if (!playback) {
+          return;
+        }
+        return awaitPlayback(playback, 'Aim audio playback failed');
+      },
+      onRulesetReveal: async () => {
+        if (!audioManager || !rulesetResult) {
+          return;
+        }
+        let playback = null;
+        try {
+          playback = audioManager.playRuleset({
+            matched: rulesetResult.matched,
+            evaluated: rulesetResult.evaluated
+          });
+        } catch (error) {
+          console.warn('Ruleset audio playback failed', error);
+          return;
+        }
+        if (!playback) {
+          return;
+        }
+        return awaitPlayback(playback, 'Ruleset audio playback failed');
+      }
+    });
+  } catch (error) {
+    console.warn('Evaluation animation sequencing failed', error);
+  }
 }
 
 function updateAimStatus(outcome){
