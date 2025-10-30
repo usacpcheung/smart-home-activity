@@ -15,6 +15,7 @@ Static, front-end only mini-game for teaching IoT/smart-home design.
 - `/data/catalog/devices.json` master device catalog (grouped by category)
 - `/scenarios/<slug>/scenario.json` scenario definition (data-driven, reusable)
 - `/scenarios/<slug>/background.(png|jpg|svg)` background referenced by the scenario
+- `/assets/audio/*.mp3` placeholder text files for audio cues; replace locally with real MP3 or WAV clips (keep the filenames) before deploying sound
 
 ## Development
 No build step. Just open with a static server (Apache, GitHub Pages, VS Code Live Server).
