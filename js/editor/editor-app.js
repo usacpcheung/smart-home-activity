@@ -211,12 +211,9 @@ async function init(){
   initAimsRules(state, { persistScenarioDraft });
   initExportImport(state, { hydrateScenario, persistScenarioDraft, renderCatalog });
   bindManualSaveControl();
-  // AI TODO:
-  // 1) implement image-stage loader (bgUpload → draw in #stage; store stage.background as filename)
-  // 2) click-to-add anchors in stage (store normalized coords)
-  // 3) anchors panel CRUD (label, type, accepts[])
-  // 4) aims & rules editors (create checks per aim)
-  // 5) persist scenario draft in localStorage
+  // Editor subsystems are ready once the catalog is loaded; subsequent modules
+  // manage stage rendering, anchor editing, aims/rules authoring, import/export,
+  // and manual save controls tied to local draft persistence.
 }
 
 function bindManualSaveControl(){
