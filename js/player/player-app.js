@@ -44,7 +44,7 @@ function ensurePlacementAudioContext() {
   return placementAudioContext;
 }
 
-function playPlacementSound() {
+async function playPlacementSound() {
   const fallback = () => {
     const ctx = ensurePlacementAudioContext();
     if (!ctx) {
@@ -78,13 +78,11 @@ function playPlacementSound() {
   if (state.audioManager) {
     try {
       const playback = state.audioManager.playPlacement();
-      if (playback && typeof playback.then === 'function') {
-        playback.catch(() => {
-          fallback();
-        });
-        return;
-      }
       if (playback) {
+        const { started } = playback;
+        if (started && typeof started.then === 'function') {
+          await started;
+        }
         return;
       }
     } catch (error) {
@@ -911,7 +909,7 @@ function bindUI(){
   }
 }
 
-function onSubmit(){
+async function onSubmit(){
   const validation = validateRulesStructure(state.scenario?.rules?.checks || []);
   if(!validation.ok){
     const message = validation.message || 'Rules contain unsupported nested groups. Unable to evaluate.';
@@ -960,51 +958,73 @@ function onSubmit(){
 
   pushStatus(message.trim(), tone);
 
-  dispatchEvaluationAnimations({
-    aimOutcomes: outcome,
-    rulesetResult
-  });
-
   const audioManager = state.audioManager;
-  if (audioManager) {
-    const outcomeEntries = Object.values(outcome || {});
-    const hasAimOutcomes = outcomeEntries.length > 0;
-    const aimPassed = hasAimOutcomes && outcomeEntries.every((value) => value === true);
-    let aimPlayback = null;
-    if (hasAimOutcomes) {
-      try {
-        aimPlayback = audioManager.playAim({ passed: aimPassed });
-      } catch (error) {
-        console.warn('Aim audio playback failed', error);
-        aimPlayback = null;
-      }
-      if (aimPlayback && typeof aimPlayback.then === 'function') {
-        aimPlayback = aimPlayback.catch(() => {});
+
+  const awaitPlayback = async (playback, warningLabel) => {
+    if (!playback) {
+      return;
+    }
+    const { finished, started } = playback;
+    let target = null;
+    if (finished && typeof finished.then === 'function') {
+      target = finished;
+    } else if (started && typeof started.then === 'function') {
+      target = started;
+    }
+    if (!target) {
+      return;
+    }
+    try {
+      await target;
+    } catch (error) {
+      if (warningLabel) {
+        console.warn(warningLabel, error);
       }
     }
+  };
 
-    const playRulesetAudio = () => {
-      if (!rulesetResult) {
-        return;
-      }
-      try {
-        const rulesetPlayback = audioManager.playRuleset({
-          matched: rulesetResult.matched,
-          evaluated: rulesetResult.evaluated
-        });
-        if (rulesetPlayback && typeof rulesetPlayback.then === 'function') {
-          rulesetPlayback.catch(() => {});
+  try {
+    await dispatchEvaluationAnimations({
+      aimOutcomes: outcome,
+      rulesetResult,
+      onAimReveal: async (entry) => {
+        if (!audioManager) {
+          return;
         }
-      } catch (error) {
-        console.warn('Ruleset audio playback failed', error);
+        let playback = null;
+        try {
+          playback = audioManager.playAim({ passed: entry.result === 'pass' });
+        } catch (error) {
+          console.warn('Aim audio playback failed', error);
+          return;
+        }
+        if (!playback) {
+          return;
+        }
+        return awaitPlayback(playback, 'Aim audio playback failed');
+      },
+      onRulesetReveal: async () => {
+        if (!audioManager || !rulesetResult) {
+          return;
+        }
+        let playback = null;
+        try {
+          playback = audioManager.playRuleset({
+            matched: rulesetResult.matched,
+            evaluated: rulesetResult.evaluated
+          });
+        } catch (error) {
+          console.warn('Ruleset audio playback failed', error);
+          return;
+        }
+        if (!playback) {
+          return;
+        }
+        return awaitPlayback(playback, 'Ruleset audio playback failed');
       }
-    };
-
-    if (aimPlayback && typeof aimPlayback.then === 'function') {
-      aimPlayback.finally(playRulesetAudio);
-    } else {
-      playRulesetAudio();
-    }
+    });
+  } catch (error) {
+    console.warn('Evaluation animation sequencing failed', error);
   }
 }
 
