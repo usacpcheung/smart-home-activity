@@ -60,7 +60,7 @@ async function loadSampleScenario() {
 
     sampleScenarioEntry = {
       id: SAMPLE_SCENARIO_ID,
-      title: scenario.meta.title || 'Sample scenario',
+      title: scenario.meta.title || 'Sample Scenario',
       uploadedAt: null,
       filename: SAMPLE_SCENARIO_FILENAME,
       scenario,

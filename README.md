@@ -16,6 +16,7 @@ Static, front-end only mini-game for teaching IoT/smart-home design.
 - `/scenarios/<slug>/scenario.json` scenario definition (data-driven, reusable)
 - `/scenarios/<slug>/background.(png|jpg|svg)` background referenced by the scenario
 - `/assets/audio/*.mp3` placeholder text files for audio cues; replace locally with real MP3 or WAV clips (keep the filenames) before deploying sound
+- `/assets/device-icons/*.txt` placeholder markers for UI icons; swap in production SVG/PNG assets while preserving filenames referenced by scenarios
 
 ## Development
 No build step. Just open with a static server (Apache, GitHub Pages, VS Code Live Server).
@@ -49,13 +50,24 @@ All files are same-origin; `fetch()` local JSON works.
 - Existing scenarios with flat `expression` arrays (or `requiredPlacements`) are migrated automatically when opened in the editor, and the engine still evaluates the legacy format for backwards compatibility.
 - Nested groups correspond to parentheses in the editor UI: you can add clauses, add AND/OR subgroups, and wrap selected sibling clauses into a subgroup to build more complex logic.
 
-## AI TODO Guidance
-- Implement Editor stage: background load, zoom/pan optional, click to add anchors → list anchors → edit properties (label, type, accepts[], isDistractor).
-- Implement device catalog UI: checkboxes by category → produces `allowedDeviceIds` + `distractorIds`.
-- Implement aims & rules UI for the Step 1 sample (voice on/off, lux threshold).
-- Implement export/import (JSON) and localStorage autosave.
-- Implement Player runtime: parse scenario → render device list → render anchors → allow placement (no correctness hints) → Connect → Submit → evaluate each aim → play animations.
-- Keep everything framework-free and <200KB total JS.
+## Current Capabilities
+
+### Editor
+- **Scenario staging.** The stage loader in [`js/editor/image-stage.js`](js/editor/image-stage.js) supports uploading a background image, normalizes anchor coordinates, and exposes zoom/pan controls.
+- **Anchor authoring.** [`js/editor/editor-app.js`](js/editor/editor-app.js) wires together the anchor toolbar, property sidebar, and drag handles so authors can add, label, and configure accepted devices for each anchor.
+- **Device catalog curation.** The catalog manager in [`js/editor/catalog-panel.js`](js/editor/catalog-panel.js) lets teachers choose the allowed devices and optional distractors from the shared catalog data.
+- **Aims & rules workflow.** [`js/editor/aims-rules.js`](js/editor/aims-rules.js) provides nested AND/OR rule authoring with grouping, clause editing, and inline validation tied to the scenario data.
+- **Persistence.** Drafts autosave to `localStorage`, and authors can import/export complete `scenario.json` files directly from the UI.
+
+### Player
+- **Scenario playback.** [`js/player/player-app.js`](js/player/player-app.js) loads the exported scenario, renders anchors, and provides the drag-and-drop placement workflow the editor describes.
+- **Connection & submission flow.** The runtime enforces the optional Connect step before Submit, evaluates each aim against the authored rules, and plays the corresponding success/failure animations.
+- **Device toolbox.** Players receive the curated device list (plus distractors) defined in the scenario data, with category filters that mirror the editor’s catalog settings.
+
+## Roadmap
+- Accessibility and mobile layout polishing for both editor and player screens.
+- Optional audio cues & icons: replace the placeholder files in `/assets/audio` and `/assets/device-icons` with production-ready assets, then update the runtime to load the new media.
+- Automated regression checks for rule evaluation and autosave flows.
 
 ## Publishing (Apache)
 Upload the whole folder (or a scenario subfolder) to your Apache web root. Ensure `.htaccess` is present for MIME/caching.
