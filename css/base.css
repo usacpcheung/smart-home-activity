@@ -159,6 +159,55 @@ input[type="reset"]:focus-visible {
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--btn-bg) 25%, transparent);
 }
 
+input[type="file"] {
+  font: inherit;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 6px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input[type="file"]:hover {
+  background: var(--color-surface-muted);
+  border-color: var(--color-border-strong);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+}
+
+input[type="file"]:focus-visible {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+input[type="file"]::file-selector-button,
+input[type="file"]::-webkit-file-upload-button {
+  margin-right: 12px;
+  padding: 8px 18px;
+  border: none;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+input[type="file"]::file-selector-button:hover,
+input[type="file"]::file-selector-button:focus-visible,
+input[type="file"]::-webkit-file-upload-button:hover,
+input[type="file"]::-webkit-file-upload-button:focus-visible {
+  background: var(--color-primary-strong);
+  transform: translateY(-1px);
+}
+
 .grid {
   display: grid;
   gap: 16px;
