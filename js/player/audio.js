@@ -229,41 +229,54 @@ function createAudioManager(manifest, baseUrl) {
       currentClip = audio;
       stopClip(audio);
 
-      let playPromise;
-      try {
-        const playResult = audio.play();
-        playPromise = playResult && typeof playResult.then === 'function'
-          ? playResult
-          : Promise.resolve();
-      } catch (error) {
+      const attemptPlayback = () => {
+        try {
+          const playResult = audio.play();
+          if (playResult && typeof playResult.then === 'function') {
+            return playResult;
+          }
+          return Promise.resolve();
+        } catch (error) {
+          return Promise.reject(error);
+        }
+      };
+
+      const cleanup = () => {
         if (currentClip === audio) {
           currentClip = null;
         }
         stopClip(audio);
-        console.warn(`Audio playback threw for ${key}`, error);
+      };
+
+      let playPromise = attemptPlayback();
+      let playbackError = null;
+
+      try {
+        await playPromise;
+      } catch (error) {
+        playbackError = error;
+      }
+
+      try {
+        await ready;
+      } catch (error) {
+        cleanup();
         throw error;
       }
 
-      const [readyResult, playbackResult] = await Promise.allSettled([
-        ready,
-        playPromise
-      ]);
-
-      if (readyResult.status === 'rejected') {
-        if (currentClip === audio) {
-          currentClip = null;
-        }
-        stopClip(audio);
-        throw readyResult.reason;
+      if (!playbackError) {
+        return;
       }
 
-      if (playbackResult.status === 'rejected') {
-        if (currentClip === audio) {
-          currentClip = null;
-        }
-        stopClip(audio);
-        console.warn(`Audio playback failed for ${key}`, playbackResult.reason);
-        throw playbackResult.reason;
+      stopClip(audio);
+
+      try {
+        playPromise = attemptPlayback();
+        await playPromise;
+      } catch (error) {
+        cleanup();
+        console.warn(`Audio playback failed for ${key}`, error);
+        throw error;
       }
     })();
 
