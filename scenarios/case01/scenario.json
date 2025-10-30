@@ -121,5 +121,16 @@
       "aim_auto": "darkThenOn"
     },
     "fail": "redBlink"
+  },
+  "audio": {
+    "placement": "assets/audio/placement.mp3",
+    "aims": {
+      "pass": "assets/audio/aim-pass.mp3",
+      "fail": "assets/audio/aim-fail.mp3"
+    },
+    "rulesets": {
+      "pass": "assets/audio/ruleset-pass.mp3",
+      "fail": "assets/audio/ruleset-fail.mp3"
+    }
   }
 }

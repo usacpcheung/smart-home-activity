@@ -20,13 +20,54 @@ function createDefaultScenario() {
     aims: [],
     rules: { requireConnectButton: true, checks: [] },
     rulesets: [],
-    animations: { success: {}, fail: 'redBlink' }
+    animations: { success: {}, fail: 'redBlink' },
+    audio: {
+      placement: 'assets/audio/placement.mp3',
+      aims: {
+        pass: 'assets/audio/aim-pass.mp3',
+        fail: 'assets/audio/aim-fail.mp3'
+      },
+      rulesets: {
+        pass: 'assets/audio/ruleset-pass.mp3',
+        fail: 'assets/audio/ruleset-fail.mp3'
+      }
+    }
   };
 }
 
 function hydrateScenario(saved) {
   if (!saved) return createDefaultScenario();
   const base = createDefaultScenario();
+  const isValidAudioPath = value => typeof value === 'string' && /\.(mp3|wav)$/i.test(value.trim());
+  const normalizeClip = value => {
+    if (value == null) return null;
+    return isValidAudioPath(value) ? value.trim() : null;
+  };
+  const sanitizeAudioGroup = (group = {}, baseGroup = {}) => {
+    const result = { ...baseGroup };
+    if (!group || typeof group !== 'object') {
+      return result;
+    }
+    Object.keys(baseGroup).forEach(key => {
+      if (Object.prototype.hasOwnProperty.call(group, key)) {
+        result[key] = normalizeClip(group[key]);
+      }
+    });
+    return result;
+  };
+  const sanitizeAudio = (audio = {}) => {
+    const baseAudio = base.audio;
+    if (!audio || typeof audio !== 'object') {
+      return baseAudio;
+    }
+    return {
+      placement: Object.prototype.hasOwnProperty.call(audio, 'placement')
+        ? normalizeClip(audio.placement)
+        : baseAudio.placement,
+      aims: sanitizeAudioGroup(audio.aims, baseAudio.aims),
+      rulesets: sanitizeAudioGroup(audio.rulesets, baseAudio.rulesets)
+    };
+  };
   const normalizeRulesets = rulesets => {
     if (!Array.isArray(rulesets)) {
       return [];
@@ -94,6 +135,7 @@ function hydrateScenario(saved) {
 
   const { distractorIds, ...restPool } = saved.devicePool || {};
   const sanitizedRulesets = normalizeRulesets(saved.rulesets);
+  const sanitizedAudio = sanitizeAudio(saved.audio);
 
   const scenario = {
     ...base,
@@ -108,7 +150,8 @@ function hydrateScenario(saved) {
     rules: { ...base.rules, ...saved.rules },
     animations: { ...base.animations, ...saved.animations },
     anchors: sanitizedAnchors,
-    rulesets: sanitizedRulesets
+    rulesets: sanitizedRulesets,
+    audio: sanitizedAudio
   };
 
   return scenario;

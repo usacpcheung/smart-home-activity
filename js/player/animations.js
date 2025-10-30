@@ -1,6 +1,37 @@
 const CARD_STAGGER_MS = 180;
 const activeTimers = new Set();
+let activeSequenceToken = 0;
+const sequenceCancelResolvers = new Set();
 let overlayEl = null;
+
+function clearTimeoutCompat(id) {
+  const clear = typeof globalThis !== 'undefined' && typeof globalThis.clearTimeout === 'function'
+    ? globalThis.clearTimeout.bind(globalThis)
+    : (timeoutId) => clearTimeout(timeoutId);
+  clear(id);
+}
+
+function cancelActiveSequence() {
+  activeSequenceToken += 1;
+  if (sequenceCancelResolvers.size === 0) {
+    return activeSequenceToken;
+  }
+  const resolvers = Array.from(sequenceCancelResolvers);
+  sequenceCancelResolvers.clear();
+  resolvers.forEach((resolve) => {
+    try {
+      resolve();
+    } catch (error) {
+      console.warn('Evaluation animation cancel handler failed', error);
+    }
+  });
+  return activeSequenceToken;
+}
+
+function clearSequenceState() {
+  clearTimers();
+  resetOverlay();
+}
 
 function ensureOverlayElement() {
   if (overlayEl && overlayEl.isConnected) {
@@ -11,11 +42,8 @@ function ensureOverlayElement() {
 }
 
 function clearTimers() {
-  const clear = typeof globalThis !== 'undefined' && typeof globalThis.clearTimeout === 'function'
-    ? globalThis.clearTimeout.bind(globalThis)
-    : (id) => clearTimeout(id);
   for (const id of activeTimers) {
-    clear(id);
+    clearTimeoutCompat(id);
   }
   activeTimers.clear();
 }
@@ -44,8 +72,8 @@ function resetOverlay() {
 }
 
 export function resetEvaluationAnimations() {
-  clearTimers();
-  resetOverlay();
+  cancelActiveSequence();
+  clearSequenceState();
 }
 
 function textContentOrFallback(node, fallback = '') {
@@ -171,41 +199,159 @@ function collectAimResults(aimOutcomes = {}) {
   return results;
 }
 
-export function runEvaluationAnimations({ aimOutcomes = {}, rulesetResult } = {}) {
-  resetEvaluationAnimations();
+export async function runEvaluationAnimations({
+  aimOutcomes = {},
+  rulesetResult,
+  onAimReveal,
+  onRulesetReveal,
+  aimRevealDelayMs = CARD_STAGGER_MS,
+  rulesetRevealDelayMs = CARD_STAGGER_MS,
+  postRevealHoldMs = 4600
+} = {}) {
+  const sequenceToken = cancelActiveSequence();
+  clearSequenceState();
 
   const overlay = ensureOverlayElement();
   if (!overlay) {
     return;
   }
 
+  const isCancelled = () => sequenceToken !== activeSequenceToken;
+
   const aimResults = collectAimResults(aimOutcomes);
-  let cardIndex = 0;
 
-  aimResults.forEach((entry) => {
-    const card = createAimCard({ ...entry, index: cardIndex });
-    overlay.appendChild(card);
-    cardIndex += 1;
-  });
+  const waitForDelay = async (ms) => {
+    const duration = Number.isFinite(ms) ? Math.max(0, ms) : 0;
+    if (duration <= 0) {
+      return;
+    }
+    if (isCancelled()) {
+      return;
+    }
+    await new Promise((resolve) => {
+      let settled = false;
+      let cancelHandler = null;
+      const finish = () => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        if (cancelHandler) {
+          sequenceCancelResolvers.delete(cancelHandler);
+        }
+      };
+      const timeoutId = schedule(() => {
+        finish();
+        resolve();
+      }, duration);
+      if (timeoutId === undefined || timeoutId === null) {
+        finish();
+        resolve();
+        return;
+      }
+      cancelHandler = () => {
+        if (settled) {
+          return;
+        }
+        if (activeTimers.has(timeoutId)) {
+          activeTimers.delete(timeoutId);
+          clearTimeoutCompat(timeoutId);
+        }
+        finish();
+        resolve();
+      };
+      sequenceCancelResolvers.add(cancelHandler);
+      if (isCancelled()) {
+        cancelHandler();
+      }
+    });
+  };
 
-  const verdictCard = createRulesetVerdictCard(rulesetResult, cardIndex);
-  overlay.appendChild(verdictCard);
+  const runStep = async (handler, args, fallbackDelay) => {
+    if (isCancelled()) {
+      return;
+    }
+    if (typeof handler === 'function') {
+      let result;
+      try {
+        result = handler(...args);
+      } catch (error) {
+        console.warn('Evaluation animation callback failed', error);
+        result = null;
+      }
+      if (isCancelled()) {
+        return;
+      }
+      if (result && typeof result.then === 'function') {
+        try {
+          await result;
+          return;
+        } catch (error) {
+          console.warn('Evaluation animation callback rejected', error);
+        }
+        if (isCancelled()) {
+          return;
+        }
+      } else if (result) {
+        return;
+      }
+    }
 
-  if (!overlay.children.length) {
-    overlay.setAttribute('aria-hidden', 'true');
-    return;
-  }
+    await waitForDelay(fallbackDelay);
+    if (isCancelled()) {
+      return;
+    }
+  };
 
   overlay.classList.add('overlay--active');
   overlay.setAttribute('aria-hidden', 'false');
 
-  const totalDuration = Math.max(1, overlay.children.length) * CARD_STAGGER_MS + 4600;
+  let cardIndex = 0;
 
+  for (const entry of aimResults) {
+    if (isCancelled()) {
+      return;
+    }
+    const card = createAimCard({ ...entry, index: cardIndex });
+    overlay.appendChild(card);
+
+    await runStep(onAimReveal, [entry, cardIndex, card], aimRevealDelayMs);
+    if (isCancelled()) {
+      return;
+    }
+    cardIndex += 1;
+  }
+
+  if (isCancelled()) {
+    return;
+  }
+  const verdictCard = createRulesetVerdictCard(rulesetResult, cardIndex);
+  overlay.appendChild(verdictCard);
+
+  await runStep(onRulesetReveal, [rulesetResult, cardIndex, verdictCard], rulesetRevealDelayMs);
+
+  if (isCancelled()) {
+    return;
+  }
+
+  if (!overlay.children.length) {
+    overlay.classList.remove('overlay--active');
+    overlay.setAttribute('aria-hidden', 'true');
+    return;
+  }
+
+  const holdDuration = Number.isFinite(postRevealHoldMs)
+    ? Math.max(0, postRevealHoldMs)
+    : 4600;
+
+  if (isCancelled()) {
+    return;
+  }
   schedule(() => {
     overlay.classList.remove('overlay--active');
     overlay.setAttribute('aria-hidden', 'true');
     schedule(() => {
       overlay.innerHTML = '';
     }, 240);
-  }, totalDuration);
+  }, holdDuration);
 }

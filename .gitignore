@@ -140,3 +140,7 @@ vite.config.ts.timestamp-*
 
 # Ignore all PNGs in the 'assets/device-icons' folder
 assets/device-icons/*.png
+
+# Ignore all MP3/WAVs in the 'assets/device-icons' folder
+assets/audio/*.mp3
+assets/audio/*.wav

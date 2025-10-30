@@ -1,0 +1,1 @@
+Placeholder audio stub. Maintainers must overwrite this file with the real "aim failure" clip (MP3 or WAV) without renaming it.

@@ -1,0 +1,1 @@
+Placeholder audio stub. Maintainers must overwrite this file with the real "ruleset fail" clip (MP3 or WAV) without renaming it.
