@@ -1,6 +1,37 @@
 const CARD_STAGGER_MS = 180;
 const activeTimers = new Set();
+let activeSequenceToken = 0;
+const sequenceCancelResolvers = new Set();
 let overlayEl = null;
+
+function clearTimeoutCompat(id) {
+  const clear = typeof globalThis !== 'undefined' && typeof globalThis.clearTimeout === 'function'
+    ? globalThis.clearTimeout.bind(globalThis)
+    : (timeoutId) => clearTimeout(timeoutId);
+  clear(id);
+}
+
+function cancelActiveSequence() {
+  activeSequenceToken += 1;
+  if (sequenceCancelResolvers.size === 0) {
+    return activeSequenceToken;
+  }
+  const resolvers = Array.from(sequenceCancelResolvers);
+  sequenceCancelResolvers.clear();
+  resolvers.forEach((resolve) => {
+    try {
+      resolve();
+    } catch (error) {
+      console.warn('Evaluation animation cancel handler failed', error);
+    }
+  });
+  return activeSequenceToken;
+}
+
+function clearSequenceState() {
+  clearTimers();
+  resetOverlay();
+}
 
 function ensureOverlayElement() {
   if (overlayEl && overlayEl.isConnected) {
@@ -11,11 +42,8 @@ function ensureOverlayElement() {
 }
 
 function clearTimers() {
-  const clear = typeof globalThis !== 'undefined' && typeof globalThis.clearTimeout === 'function'
-    ? globalThis.clearTimeout.bind(globalThis)
-    : (id) => clearTimeout(id);
   for (const id of activeTimers) {
-    clear(id);
+    clearTimeoutCompat(id);
   }
   activeTimers.clear();
 }
@@ -44,8 +72,8 @@ function resetOverlay() {
 }
 
 export function resetEvaluationAnimations() {
-  clearTimers();
-  resetOverlay();
+  cancelActiveSequence();
+  clearSequenceState();
 }
 
 function textContentOrFallback(node, fallback = '') {
@@ -180,12 +208,15 @@ export async function runEvaluationAnimations({
   rulesetRevealDelayMs = CARD_STAGGER_MS,
   postRevealHoldMs = 4600
 } = {}) {
-  resetEvaluationAnimations();
+  const sequenceToken = cancelActiveSequence();
+  clearSequenceState();
 
   const overlay = ensureOverlayElement();
   if (!overlay) {
     return;
   }
+
+  const isCancelled = () => sequenceToken !== activeSequenceToken;
 
   const aimResults = collectAimResults(aimOutcomes);
 
@@ -194,12 +225,52 @@ export async function runEvaluationAnimations({
     if (duration <= 0) {
       return;
     }
+    if (isCancelled()) {
+      return;
+    }
     await new Promise((resolve) => {
-      schedule(resolve, duration);
+      let settled = false;
+      let cancelHandler = null;
+      const finish = () => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        if (cancelHandler) {
+          sequenceCancelResolvers.delete(cancelHandler);
+        }
+      };
+      const timeoutId = schedule(() => {
+        finish();
+        resolve();
+      }, duration);
+      if (timeoutId === undefined || timeoutId === null) {
+        finish();
+        resolve();
+        return;
+      }
+      cancelHandler = () => {
+        if (settled) {
+          return;
+        }
+        if (activeTimers.has(timeoutId)) {
+          activeTimers.delete(timeoutId);
+          clearTimeoutCompat(timeoutId);
+        }
+        finish();
+        resolve();
+      };
+      sequenceCancelResolvers.add(cancelHandler);
+      if (isCancelled()) {
+        cancelHandler();
+      }
     });
   };
 
   const runStep = async (handler, args, fallbackDelay) => {
+    if (isCancelled()) {
+      return;
+    }
     if (typeof handler === 'function') {
       let result;
       try {
@@ -208,6 +279,9 @@ export async function runEvaluationAnimations({
         console.warn('Evaluation animation callback failed', error);
         result = null;
       }
+      if (isCancelled()) {
+        return;
+      }
       if (result && typeof result.then === 'function') {
         try {
           await result;
@@ -215,12 +289,18 @@ export async function runEvaluationAnimations({
         } catch (error) {
           console.warn('Evaluation animation callback rejected', error);
         }
+        if (isCancelled()) {
+          return;
+        }
       } else if (result) {
         return;
       }
     }
 
     await waitForDelay(fallbackDelay);
+    if (isCancelled()) {
+      return;
+    }
   };
 
   overlay.classList.add('overlay--active');
@@ -229,17 +309,30 @@ export async function runEvaluationAnimations({
   let cardIndex = 0;
 
   for (const entry of aimResults) {
+    if (isCancelled()) {
+      return;
+    }
     const card = createAimCard({ ...entry, index: cardIndex });
     overlay.appendChild(card);
 
     await runStep(onAimReveal, [entry, cardIndex, card], aimRevealDelayMs);
+    if (isCancelled()) {
+      return;
+    }
     cardIndex += 1;
   }
 
+  if (isCancelled()) {
+    return;
+  }
   const verdictCard = createRulesetVerdictCard(rulesetResult, cardIndex);
   overlay.appendChild(verdictCard);
 
   await runStep(onRulesetReveal, [rulesetResult, cardIndex, verdictCard], rulesetRevealDelayMs);
+
+  if (isCancelled()) {
+    return;
+  }
 
   if (!overlay.children.length) {
     overlay.classList.remove('overlay--active');
@@ -251,6 +344,9 @@ export async function runEvaluationAnimations({
     ? Math.max(0, postRevealHoldMs)
     : 4600;
 
+  if (isCancelled()) {
+    return;
+  }
   schedule(() => {
     overlay.classList.remove('overlay--active');
     overlay.setAttribute('aria-hidden', 'true');
