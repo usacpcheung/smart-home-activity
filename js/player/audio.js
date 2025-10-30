@@ -98,6 +98,7 @@ function createAudioManager(manifest, baseUrl) {
   const clipSources = new Map();
   const audioCache = new Map();
   let currentClip = null;
+  let currentClipToken = null;
   let unlockAttempted = false;
 
   function logMissingSource(key, reason) {
@@ -187,6 +188,7 @@ function createAudioManager(manifest, baseUrl) {
     audio.addEventListener('ended', () => {
       if (currentClip === audio) {
         currentClip = null;
+        currentClipToken = null;
       }
     });
     const entry = { audio, ready };
@@ -224,9 +226,12 @@ function createAudioManager(manifest, baseUrl) {
       if (currentClip && currentClip !== audio) {
         stopClip(currentClip);
         currentClip = null;
+        currentClipToken = null;
       }
 
+      const playbackToken = Symbol('playback');
       currentClip = audio;
+      currentClipToken = playbackToken;
       stopClip(audio);
 
       const attemptPlayback = () => {
@@ -242,8 +247,9 @@ function createAudioManager(manifest, baseUrl) {
       };
 
       const cleanup = () => {
-        if (currentClip === audio) {
+        if (currentClip === audio && currentClipToken === playbackToken) {
           currentClip = null;
+          currentClipToken = null;
         }
         stopClip(audio);
       };
@@ -262,6 +268,13 @@ function createAudioManager(manifest, baseUrl) {
       } catch (error) {
         cleanup();
         throw error;
+      }
+
+      if (currentClip !== audio || currentClipToken !== playbackToken) {
+        if (currentClip !== audio) {
+          stopClip(audio);
+        }
+        return;
       }
 
       if (!playbackError) {
@@ -355,6 +368,7 @@ function createAudioManager(manifest, baseUrl) {
   function reset() {
     stopClip(currentClip);
     currentClip = null;
+    currentClipToken = null;
   }
 
   registerClip('placement', manifest?.placement);
