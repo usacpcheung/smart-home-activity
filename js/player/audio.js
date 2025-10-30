@@ -226,39 +226,44 @@ function createAudioManager(manifest, baseUrl) {
         currentClip = null;
       }
 
-      try {
-        await ready;
-      } catch (error) {
-        if (currentClip === audio) {
-          currentClip = null;
-        }
-        throw error;
-      }
-
       currentClip = audio;
       stopClip(audio);
 
-      let playResult;
+      let playPromise;
       try {
-        playResult = audio.play();
+        const playResult = audio.play();
+        playPromise = playResult && typeof playResult.then === 'function'
+          ? playResult
+          : Promise.resolve();
       } catch (error) {
         if (currentClip === audio) {
           currentClip = null;
         }
+        stopClip(audio);
         console.warn(`Audio playback threw for ${key}`, error);
         throw error;
       }
 
-      if (playResult && typeof playResult.then === 'function') {
-        try {
-          await playResult;
-        } catch (error) {
-          if (currentClip === audio) {
-            currentClip = null;
-          }
-          console.warn(`Audio playback failed for ${key}`, error);
-          throw error;
+      const [readyResult, playbackResult] = await Promise.allSettled([
+        ready,
+        playPromise
+      ]);
+
+      if (readyResult.status === 'rejected') {
+        if (currentClip === audio) {
+          currentClip = null;
         }
+        stopClip(audio);
+        throw readyResult.reason;
+      }
+
+      if (playbackResult.status === 'rejected') {
+        if (currentClip === audio) {
+          currentClip = null;
+        }
+        stopClip(audio);
+        console.warn(`Audio playback failed for ${key}`, playbackResult.reason);
+        throw playbackResult.reason;
       }
     })();
 
