@@ -171,7 +171,15 @@ function collectAimResults(aimOutcomes = {}) {
   return results;
 }
 
-export function runEvaluationAnimations({ aimOutcomes = {}, rulesetResult } = {}) {
+export async function runEvaluationAnimations({
+  aimOutcomes = {},
+  rulesetResult,
+  onAimReveal,
+  onRulesetReveal,
+  aimRevealDelayMs = CARD_STAGGER_MS,
+  rulesetRevealDelayMs = CARD_STAGGER_MS,
+  postRevealHoldMs = 4600
+} = {}) {
   resetEvaluationAnimations();
 
   const overlay = ensureOverlayElement();
@@ -180,26 +188,68 @@ export function runEvaluationAnimations({ aimOutcomes = {}, rulesetResult } = {}
   }
 
   const aimResults = collectAimResults(aimOutcomes);
-  let cardIndex = 0;
 
-  aimResults.forEach((entry) => {
-    const card = createAimCard({ ...entry, index: cardIndex });
-    overlay.appendChild(card);
-    cardIndex += 1;
-  });
+  const waitForDelay = async (ms) => {
+    const duration = Number.isFinite(ms) ? Math.max(0, ms) : 0;
+    if (duration <= 0) {
+      return;
+    }
+    await new Promise((resolve) => {
+      schedule(resolve, duration);
+    });
+  };
 
-  const verdictCard = createRulesetVerdictCard(rulesetResult, cardIndex);
-  overlay.appendChild(verdictCard);
+  const runStep = async (handler, args, fallbackDelay) => {
+    if (typeof handler === 'function') {
+      let result;
+      try {
+        result = handler(...args);
+      } catch (error) {
+        console.warn('Evaluation animation callback failed', error);
+        result = null;
+      }
+      if (result && typeof result.then === 'function') {
+        try {
+          await result;
+          return;
+        } catch (error) {
+          console.warn('Evaluation animation callback rejected', error);
+        }
+      } else if (result) {
+        return;
+      }
+    }
 
-  if (!overlay.children.length) {
-    overlay.setAttribute('aria-hidden', 'true');
-    return;
-  }
+    await waitForDelay(fallbackDelay);
+  };
 
   overlay.classList.add('overlay--active');
   overlay.setAttribute('aria-hidden', 'false');
 
-  const totalDuration = Math.max(1, overlay.children.length) * CARD_STAGGER_MS + 4600;
+  let cardIndex = 0;
+
+  for (const entry of aimResults) {
+    const card = createAimCard({ ...entry, index: cardIndex });
+    overlay.appendChild(card);
+
+    await runStep(onAimReveal, [entry, cardIndex, card], aimRevealDelayMs);
+    cardIndex += 1;
+  }
+
+  const verdictCard = createRulesetVerdictCard(rulesetResult, cardIndex);
+  overlay.appendChild(verdictCard);
+
+  await runStep(onRulesetReveal, [rulesetResult, cardIndex, verdictCard], rulesetRevealDelayMs);
+
+  if (!overlay.children.length) {
+    overlay.classList.remove('overlay--active');
+    overlay.setAttribute('aria-hidden', 'true');
+    return;
+  }
+
+  const holdDuration = Number.isFinite(postRevealHoldMs)
+    ? Math.max(0, postRevealHoldMs)
+    : 4600;
 
   schedule(() => {
     overlay.classList.remove('overlay--active');
@@ -207,5 +257,5 @@ export function runEvaluationAnimations({ aimOutcomes = {}, rulesetResult } = {}
     schedule(() => {
       overlay.innerHTML = '';
     }, 240);
-  }, totalDuration);
+  }, holdDuration);
 }
