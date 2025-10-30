@@ -16,8 +16,8 @@ body {
   --color-text: #101828;
   --color-text-muted: #5b6478;
   --color-heading: #0f172a;
-  --color-primary: #2f6fed;
-  --color-primary-strong: #224ecb;
+  --color-primary: #4d7ee8;
+  --color-primary-strong: #3a64cc;
   --color-primary-soft: #e5edff;
   --shadow-card: 0 18px 36px rgba(15, 23, 42, 0.05);
 }
@@ -133,6 +133,7 @@ input[type="submit"]:hover,
 input[type="reset"]:hover {
   background: var(--btn-bg-hover);
   border-color: var(--btn-bg-hover);
+  color: #fff;
   transform: translateY(-1px);
 }
 
