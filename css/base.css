@@ -16,8 +16,8 @@ body {
   --color-text: #101828;
   --color-text-muted: #5b6478;
   --color-heading: #0f172a;
-  --color-primary: #4d7ee8;
-  --color-primary-strong: #3a64cc;
+  --color-primary: #3f6fda;
+  --color-primary-strong: #335cc4;
   --color-primary-soft: #e5edff;
   --shadow-card: 0 18px 36px rgba(15, 23, 42, 0.05);
 }
@@ -42,7 +42,7 @@ a:not(.btn):focus {
   background: linear-gradient(135deg, var(--color-primary-strong), var(--color-primary));
   color: #fff;
   padding: 12px 20px;
-  box-shadow: 0 12px 28px rgba(34, 78, 203, 0.18);
+  box-shadow: 0 12px 28px rgba(51, 92, 196, 0.18);
 }
 
 .bar--header {
