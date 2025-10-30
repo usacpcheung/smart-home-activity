@@ -4,6 +4,7 @@ import { validateRulesStructure } from '../core/rules.js';
 import { qs } from '../core/utils.js';
 import { renderStage as renderStageView, refreshAnchorFeedback, setAnchorFeedbackEvaluator, setStageConnectionState, syncAnchorPlacements } from './stage-runtime.js';
 import { runEvaluationAnimations as dispatchEvaluationAnimations } from './animations.js';
+import { createAudioManager } from './audio.js';
 
 const STORED_SCENARIOS_KEY = 'uploadedScenarios';
 const DEFAULT_SCENARIO_URL = 'scenarios/case01/scenario.json';
@@ -19,7 +20,8 @@ const state = {
   scenarioBase: '',
   availableRulesets: [],
   selectedRulesetIds: new Set(),
-  correctRulesetIds: new Set()
+  correctRulesetIds: new Set(),
+  audioManager: null
 };
 
 const boundAnchorElements = new WeakSet();
@@ -43,33 +45,54 @@ function ensurePlacementAudioContext() {
 }
 
 function playPlacementSound() {
-  const ctx = ensurePlacementAudioContext();
-  if (!ctx) {
-    return;
-  }
+  const fallback = () => {
+    const ctx = ensurePlacementAudioContext();
+    if (!ctx) {
+      return;
+    }
 
-  const startTime = ctx.currentTime;
-  const duration = 0.08;
+    const startTime = ctx.currentTime;
+    const duration = 0.08;
 
-  const oscillator = ctx.createOscillator();
-  oscillator.type = 'sine';
-  oscillator.frequency.setValueAtTime(420, startTime);
+    const oscillator = ctx.createOscillator();
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(420, startTime);
 
-  const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.0001, startTime);
-  gain.gain.exponentialRampToValueAtTime(0.35, startTime + 0.01);
-  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.35, startTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
 
-  oscillator.connect(gain);
-  gain.connect(ctx.destination);
+    oscillator.connect(gain);
+    gain.connect(ctx.destination);
 
-  oscillator.onended = () => {
-    oscillator.disconnect();
-    gain.disconnect();
+    oscillator.onended = () => {
+      oscillator.disconnect();
+      gain.disconnect();
+    };
+
+    oscillator.start(startTime);
+    oscillator.stop(startTime + duration);
   };
 
-  oscillator.start(startTime);
-  oscillator.stop(startTime + duration);
+  if (state.audioManager) {
+    try {
+      const playback = state.audioManager.playPlacement();
+      if (playback && typeof playback.then === 'function') {
+        playback.catch(() => {
+          fallback();
+        });
+        return;
+      }
+      if (playback) {
+        return;
+      }
+    } catch (error) {
+      console.warn('Placement audio manager failed', error);
+    }
+  }
+
+  fallback();
 }
 
 function normalizeScenarioRulesets(rawRulesets) {
@@ -517,6 +540,9 @@ function attemptPlacement(deviceId, anchorId) {
     pushStatus('Anchor not recognized for placement.', 'error');
     return false;
   }
+  if (state.audioManager) {
+    state.audioManager.unlock();
+  }
   const anchor = findAnchor(anchorId);
   if (!anchor) {
     pushStatus('Anchor not recognized for placement.', 'error');
@@ -635,6 +661,11 @@ function bindDeviceCardInteractions(card, device) {
 }
 
 async function init(){
+  if (state.audioManager) {
+    state.audioManager.reset();
+    state.audioManager = null;
+  }
+
   const params = new URL(location.href).searchParams;
   const storedSlotId = params.get('storedSlot');
   let scenarioInfo = null;
@@ -664,6 +695,8 @@ async function init(){
   state.scenario = scenarioInfo.scenario;
   state.scenarioUrl = scenarioInfo.url;
   state.scenarioBase = scenarioInfo.baseUrl;
+
+  state.audioManager = createAudioManager(state.scenario?.audio, state.scenarioBase);
 
   if (state.scenario) {
     Object.defineProperty(state.scenario, '__baseUrl', {
@@ -931,6 +964,48 @@ function onSubmit(){
     aimOutcomes: outcome,
     rulesetResult
   });
+
+  const audioManager = state.audioManager;
+  if (audioManager) {
+    const outcomeEntries = Object.values(outcome || {});
+    const hasAimOutcomes = outcomeEntries.length > 0;
+    const aimPassed = hasAimOutcomes && outcomeEntries.every((value) => value === true);
+    let aimPlayback = null;
+    if (hasAimOutcomes) {
+      try {
+        aimPlayback = audioManager.playAim({ passed: aimPassed });
+      } catch (error) {
+        console.warn('Aim audio playback failed', error);
+        aimPlayback = null;
+      }
+      if (aimPlayback && typeof aimPlayback.then === 'function') {
+        aimPlayback = aimPlayback.catch(() => {});
+      }
+    }
+
+    const playRulesetAudio = () => {
+      if (!rulesetResult) {
+        return;
+      }
+      try {
+        const rulesetPlayback = audioManager.playRuleset({
+          matched: rulesetResult.matched,
+          evaluated: rulesetResult.evaluated
+        });
+        if (rulesetPlayback && typeof rulesetPlayback.then === 'function') {
+          rulesetPlayback.catch(() => {});
+        }
+      } catch (error) {
+        console.warn('Ruleset audio playback failed', error);
+      }
+    };
+
+    if (aimPlayback && typeof aimPlayback.then === 'function') {
+      aimPlayback.finally(playRulesetAudio);
+    } else {
+      playRulesetAudio();
+    }
+  }
 }
 
 function updateAimStatus(outcome){
