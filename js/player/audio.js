@@ -99,6 +99,7 @@ function createAudioManager(manifest, baseUrl) {
   const audioCache = new Map();
   let currentClip = null;
   let currentClipToken = null;
+  let currentFinishedTracker = null;
   let unlockAttempted = false;
 
   function logMissingSource(key, reason) {
@@ -212,6 +213,62 @@ function createAudioManager(manifest, baseUrl) {
     }
   }
 
+  function createCompletionTracker(audio, playbackToken, key) {
+    let resolveFn;
+    let rejectFn;
+    const finished = new Promise((resolve, reject) => {
+      resolveFn = resolve;
+      rejectFn = reject;
+    });
+
+    const cleanup = () => {
+      audio.removeEventListener('ended', onEnded);
+      audio.removeEventListener('error', onError);
+    };
+
+    let tracker;
+
+    const settle = (resolver, value) => {
+      if (!tracker || tracker.settled) {
+        return;
+      }
+      tracker.settled = true;
+      cleanup();
+      try {
+        resolver(value);
+      } finally {
+        if (currentFinishedTracker === tracker) {
+          currentFinishedTracker = null;
+        }
+      }
+    };
+
+    const onEnded = () => {
+      settle(resolveFn);
+    };
+
+    const onError = (event) => {
+      const error = event?.error instanceof Error
+        ? event.error
+        : new Error(`Audio playback failed for ${key || 'clip'}`);
+      settle(rejectFn, error);
+    };
+
+    audio.addEventListener('ended', onEnded);
+    audio.addEventListener('error', onError);
+
+    tracker = {
+      audio,
+      token: playbackToken,
+      finished,
+      settled: false,
+      resolve: () => settle(resolveFn),
+      reject: (error) => settle(rejectFn, error instanceof Error ? error : new Error(String(error)))
+    };
+
+    return tracker;
+  }
+
   function playClipByKey(key) {
     const url = clipSources.get(key);
     if (!url) {
@@ -222,38 +279,45 @@ function createAudioManager(manifest, baseUrl) {
       return null;
     }
     const { audio, ready } = entry;
-    const playback = (async () => {
-      if (currentClip && currentClip !== audio) {
-        stopClip(currentClip);
+
+    if (currentFinishedTracker) {
+      currentFinishedTracker.resolve();
+    }
+    if (currentClip && currentClip !== audio) {
+      stopClip(currentClip);
+    }
+    currentClip = null;
+    currentClipToken = null;
+
+    const playbackToken = Symbol('playback');
+    currentClip = audio;
+    currentClipToken = playbackToken;
+    stopClip(audio);
+
+    const completionTracker = createCompletionTracker(audio, playbackToken, key);
+    currentFinishedTracker = completionTracker;
+
+    const attemptPlayback = () => {
+      try {
+        const playResult = audio.play();
+        if (playResult && typeof playResult.then === 'function') {
+          return playResult;
+        }
+        return Promise.resolve();
+      } catch (error) {
+        return Promise.reject(error);
+      }
+    };
+
+    const cleanup = () => {
+      if (currentClip === audio && currentClipToken === playbackToken) {
         currentClip = null;
         currentClipToken = null;
       }
-
-      const playbackToken = Symbol('playback');
-      currentClip = audio;
-      currentClipToken = playbackToken;
       stopClip(audio);
+    };
 
-      const attemptPlayback = () => {
-        try {
-          const playResult = audio.play();
-          if (playResult && typeof playResult.then === 'function') {
-            return playResult;
-          }
-          return Promise.resolve();
-        } catch (error) {
-          return Promise.reject(error);
-        }
-      };
-
-      const cleanup = () => {
-        if (currentClip === audio && currentClipToken === playbackToken) {
-          currentClip = null;
-          currentClipToken = null;
-        }
-        stopClip(audio);
-      };
-
+    const playback = (async () => {
       let playPromise = attemptPlayback();
       let playbackError = null;
 
@@ -266,11 +330,13 @@ function createAudioManager(manifest, baseUrl) {
       try {
         await ready;
       } catch (error) {
+        completionTracker.reject(error);
         cleanup();
         throw error;
       }
 
       if (currentClip !== audio || currentClipToken !== playbackToken) {
+        completionTracker.resolve();
         if (currentClip !== audio) {
           stopClip(audio);
         }
@@ -287,13 +353,17 @@ function createAudioManager(manifest, baseUrl) {
         playPromise = attemptPlayback();
         await playPromise;
       } catch (error) {
+        completionTracker.reject(error);
         cleanup();
         console.warn(`Audio playback failed for ${key}`, error);
         throw error;
       }
     })();
 
-    return playback;
+    return {
+      started: playback,
+      finished: completionTracker.finished
+    };
   }
 
   function firstAvailableClip() {
@@ -366,6 +436,9 @@ function createAudioManager(manifest, baseUrl) {
   }
 
   function reset() {
+    if (currentFinishedTracker) {
+      currentFinishedTracker.resolve();
+    }
     stopClip(currentClip);
     currentClip = null;
     currentClipToken = null;
