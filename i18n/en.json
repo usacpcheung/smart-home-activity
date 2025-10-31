@@ -1,0 +1,266 @@
+{
+    "common": {
+        "app": {
+            "title": "Smart Home Activity"
+        },
+        "nav": {
+            "backToHome": "← Back to Home"
+        },
+        "status": {
+            "loading": "Loading…",
+            "loadingCatalog": "Loading catalog…",
+            "noScenario": "No scenario loaded.",
+            "notAvailable": "n/a",
+            "untitled": "untitled",
+            "untitledScenario": "Untitled scenario",
+            "untitledFallback": "Untitled",
+            "sampleScenario": "Sample Scenario",
+            "noneSelected": "none selected",
+            "notProvided": "—",
+            "active": "active",
+            "inactive": "inactive"
+        },
+        "aria": {
+            "editorStage": "Editor Stage (click to add anchors)",
+            "playerStage": "Play Stage"
+        },
+        "messages": {
+            "titleCannotBeEmpty": "Title cannot be empty. Please provide a title."
+        }
+    },
+    "index": {
+        "page": {
+            "title": "Smart Home Activity",
+            "heading": "Smart Home Activity",
+            "chooseMode": "Choose Mode",
+            "editorDescription": "Editor: build scenarios (upload background, mark anchors, choose devices, define aims/rules, export JSON).",
+            "playerDescription": "Player: students play a scenario (device selection, placement, connect, submit, animations).",
+            "openEditor": "Open Editor",
+            "scenariosHeading": "Scenarios",
+            "uploadInstructions": "Upload your scenario folder (e.g. /scenarios/mycase) containing scenario.json and its background image.",
+            "uploadLabel": "Scenario JSON file",
+            "uploadHint": "Select a .json file that was exported from the editor.",
+            "storedHeading": "Stored scenarios",
+            "footerNote": "Static, front-end only. Apache / GitHub Pages friendly.",
+            "table": {
+                "slot": "Slot",
+                "title": "Title",
+                "fileName": "File name",
+                "uploaded": "Uploaded",
+                "actions": "Actions"
+            }
+        },
+        "scenarioStorage": {
+            "loadingSample": "Loading sample scenario…",
+            "sampleLoadError": "Sample scenario could not be loaded. Upload a scenario JSON to get started.",
+            "sampleUnavailable": "Sample scenario is unavailable. Upload a scenario JSON to continue.",
+            "readingFile": "Reading scenario file…",
+            "uploadFailed": "Upload failed: {reason}",
+            "storageUnavailableSave": "Local storage is not available. Scenario could not be saved.",
+            "promptTitle": "Enter a title for this scenario:",
+            "uploadCanceled": "Upload canceled. Scenario was not saved.",
+            "savedToSlot": "Saved \"{title}\" to slot {slot}.",
+            "invalidJson": "Invalid JSON format.",
+            "unexpectedError": "Unexpected error.",
+            "sampleUnavailableShort": "Sample scenario is not available. Please refresh and try again.",
+            "storageUnavailablePlay": "Local storage is not available. Unable to play stored scenarios.",
+            "storageUnavailableClear": "Local storage is not available. Nothing to clear.",
+            "slotEmpty": "Scenario slot is already empty.",
+            "clearedFromStorage": "Cleared \"{title}\" from stored scenarios.",
+            "sampleCannotBeCleared": "Sample scenario cannot be cleared.",
+            "updateTitlePrompt": "Update the title for this scenario:",
+            "titleUpdateCanceled": "Title update canceled.",
+            "sampleRenamed": "Sample scenario renamed to \"{title}\".",
+            "renameFailed": "Unable to update the scenario title. Please try again.",
+            "scenarioRenamed": "Scenario renamed to \"{title}\".",
+            "storageUnavailable": "Local storage is not available. Uploaded scenarios will not be saved.",
+            "storageUnavailableList": "Local storage is not available. Uploaded scenarios cannot be stored.",
+            "fileReadError": "File content could not be read as text.",
+            "errors": {
+                "invalidScenarioObject": "Scenario JSON must be an object.",
+                "missingMetaTitle": "Missing \"meta.title\" string.",
+                "missingStageBackground": "Missing \"stage.background\" string.",
+                "missingDevicePool": "Missing \"devicePool\" object.",
+                "missingAllowedIds": "\"devicePool.allowedDeviceIds\" must be an array.",
+                "invalidBackgroundUrl": "Invalid \"stage.background\" URL.",
+                "sampleInvalid": "Sample scenario is invalid."
+            },
+            "notes": {
+                "convertedBackground": "Converted background path to an absolute URL."
+            },
+            "actions": {
+                "editTitle": "Edit title",
+                "play": "Play",
+                "clear": "Clear"
+            },
+            "emptyStates": {
+                "none": "No uploaded scenarios yet."
+            }
+        }
+    },
+    "editor": {
+        "page": {
+            "title": "Editor — Smart Home Activity",
+            "heading": "Editor",
+            "steps": {
+                "allowedDevices": "1) Allowed Devices",
+                "uploadBackground": "2) Upload Background",
+                "aimsRules": "3) Aims & Rules",
+                "rulesets": "4) Rulesets",
+                "exportImport": "Export / Import"
+            },
+            "buttons": {
+                "saveDraft": "Save Draft",
+                "exportScenario": "Export scenario.json"
+            },
+            "footerTip": "Tip: Anchors store normalized coordinates (0..1) for reuse across sizes."
+        },
+        "scenario": {
+            "defaultTitle": "New Scenario",
+            "ruleValidationWarning": "Scenario saved, but rule validation reported issues. Review highlighted rules before exporting."
+        },
+        "anchors": {
+            "empty": "No anchors yet. Click the stage to add one.",
+            "fields": {
+                "id": "ID",
+                "label": "Label",
+                "type": "Type"
+            },
+            "allowedDevices": "Allowed Devices",
+            "allowedDevicesEmpty": "Select allowed devices to configure anchor access.",
+            "delete": "Delete",
+            "defaultLabel": "Anchor {id}"
+        },
+        "aims": {
+            "fields": {
+                "id": "Aim ID",
+                "description": "Description"
+            },
+            "remove": "Remove aim",
+            "empty": "No aims yet. Add one to describe your learning goals.",
+            "add": "Add aim",
+            "limitTooltip": "You can create up to {limit} aims.",
+            "limitMessage": "You can add up to {limit} aims. Remove an aim to add another."
+        },
+        "rulesets": {
+            "empty": "No rulesets yet. Add one to define acceptable rule combinations.",
+            "add": "Add ruleset",
+            "remove": "Remove",
+            "fields": {
+                "text": "Rule text",
+                "correct": "Mark as correct"
+            }
+        },
+        "rules": {
+            "select": "Select",
+            "device": "Device",
+            "selectDevice": "Select device",
+            "anchor": "Anchor",
+            "selectAnchor": "Select anchor",
+            "require": "Require",
+            "groupLogic": "Group logic",
+            "all": "ALL (AND)",
+            "any": "ANY (OR)",
+            "removeGroup": "Remove group",
+            "removeClause": "Remove",
+            "emptyGroup": "No clauses in this group yet.",
+            "addClause": "Add clause",
+            "addSubgroup": "Add subgroup",
+            "groupSelected": "Group selected",
+            "nestedGroupNote": "Nested groups cannot contain additional subgroups. Use the top-level group to reorganize clauses.",
+            "subgroupWarning": "Subgroups can only be added to the main group.",
+            "groupingWarning": "Grouping clauses is only supported at the top level.",
+            "addAimsFirst": "Add aims before configuring rules."
+        },
+        "exportImport": {
+            "noScenario": "No scenario loaded to export.",
+            "invalidFile": "Invalid scenario file. Please choose a valid export.",
+            "unableToLoad": "Unable to load the selected scenario file.",
+            "importFailed": "Failed to import scenario. Please try again.",
+            "importInvalid": "Failed to import scenario. Please ensure the file is valid."
+        }
+    },
+    "player": {
+        "page": {
+            "title": "Player — Smart Home Activity",
+            "heading": "Player",
+            "deviceListHeading": "Device List",
+            "aimsHeading": "Aims",
+            "controlsHeading": "Controls",
+            "rulesetsHeading": "Rulesets",
+            "rulesetsHint": "Select the combinations you believe are valid for this scenario.",
+            "rulesetsLegend": "Scenario rulesets",
+            "rulesetsEmpty": "No rulesets defined for this scenario.",
+            "buttons": {
+                "connectAll": "Connect All",
+                "disconnectAll": "Disconnect All",
+                "submit": "Submit My Design",
+                "reset": "Reset"
+            },
+            "footerTip": "Drag, place on anchors, connect, submit. Animations show per-aim success/fail."
+        },
+        "rulesets": {
+            "lockTooltip": "Connect devices before changing rulesets.",
+            "lockedMessage": "Connect devices before changing rulesets. \"{name}\" remains {state}.",
+            "activated": "Activated {label}.",
+            "deactivated": "Deactivated {label}.",
+            "controlsUnlocked": "Ruleset controls unlocked.",
+            "controlsLocked": "Ruleset controls locked until devices are connected."
+        },
+        "connect": {
+            "buttonStatus": "Devices {verb}. {lockMessage} Active rulesets: {summary}.",
+            "tooltip": "Place at least one device before connecting all.",
+            "connectAvailable": "Connect All is now available."
+        },
+        "placements": {
+            "removed": "Removed {device} from {anchor}.",
+            "selectDeviceFirst": "Select a device before choosing an anchor.",
+            "anchorNotRecognized": "Anchor not recognized for placement.",
+            "deviceNotAllowed": "{device} cannot be placed at {anchor}.",
+            "anchorFull": "{anchor} already has four devices placed.",
+            "deviceAlreadyPlaced": "{device} is already placed at {anchor}.",
+            "placed": "Placed {device} at {anchor}.",
+            "needsPlacement": "Place at least one device to enable Connect All."
+        },
+        "load": {
+            "storedUnavailable": "Stored scenario not available. Loading default sample scenario.",
+            "fallbackToDefault": "Falling back to default sample scenario.",
+            "unableToLoad": "Unable to load a scenario.",
+            "failedFromUrl": "Failed to load scenario from {url}: {error}",
+            "scenarioLoaded": "Scenario loaded: {title}"
+        },
+        "status": {
+            "rulesValidationFailed": "Rules contain unsupported nested groups. Unable to evaluate.",
+            "evaluationComplete": "Evaluation complete.",
+            "evaluationCompleteWithCounts": "Evaluation complete: {passed}/{total} aims satisfied.",
+            "rulesetNotEvaluated": "Ruleset selection not evaluated.",
+            "noRulesets": "No rulesets provided for this scenario.",
+            "rulesetCorrect": "Ruleset selection correct.",
+            "rulesetIncorrect": "Ruleset selection incorrect{details}.",
+            "rulesetMissing": "missing: {labels}",
+            "rulesetUnexpected": "unexpected: {labels}"
+        },
+        "stage": {
+            "removeFromAnchor": "Remove {device} from {anchor}",
+            "removeDevice": "Remove {device}",
+            "badgeFallback": "?",
+            "deviceFallback": "Device",
+            "deviceNameFallback": "device",
+            "anchorNameFallback": "anchor"
+        },
+        "animations": {
+            "aimLabel": "Aim",
+            "aimSatisfied": "Aim satisfied",
+            "aimNotMet": "Aim not met",
+            "rulesetNotEvaluated": "Ruleset selection not evaluated",
+            "rulesetNoComparison": "No ruleset comparison was performed.",
+            "rulesetConnectPrompt": "Connect devices and try again to score your selection.",
+            "rulesetCorrect": "Ruleset selection correct",
+            "rulesetCorrectDetail": "Your chosen combinations match the expected answer.",
+            "rulesetIncorrect": "Ruleset selection incorrect",
+            "rulesetMissing": "Missing: {labels}",
+            "rulesetUnexpected": "Unexpected: {labels}",
+            "rulesetReview": "Review the expected combinations and adjust your picks."
+        }
+    }
+}

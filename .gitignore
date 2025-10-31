@@ -144,3 +144,6 @@ assets/device-icons/*.png
 # Ignore all MP3/WAVs in the 'assets/device-icons' folder
 assets/audio/*.mp3
 assets/audio/*.wav
+# Localization overrides
+i18n/private/
+i18n/*.local.json
