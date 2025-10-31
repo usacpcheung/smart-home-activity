@@ -3,57 +3,58 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Player — Smart Home Activity</title>
+  <title data-i18n="player.page.title">Player — Smart Home Activity</title>
   <link rel="stylesheet" href="css/base.css"/>
   <link rel="stylesheet" href="css/player.css"/>
 </head>
 <body>
 <header class="bar bar--header">
-  <h1>Player</h1>
-  <a class="btn" href="index.html">← Back to Home</a>
+  <h1 data-i18n="player.page.heading">Player</h1>
+  <a class="btn" href="index.html" data-i18n="common.nav.backToHome">← Back to Home</a>
 </header>
 
 <main class="grid">
   <aside class="pane" id="deviceListPane">
-    <h2>Device List</h2>
-    <div id="deviceList"><em>Loading…</em></div>
+    <h2 data-i18n="player.page.deviceListHeading">Device List</h2>
+    <div id="deviceList"><em data-i18n="common.status.loading">Loading…</em></div>
   </aside>
 
   <section class="stage-wrap">
     <div class="aims">
-      <h3>Aims</h3>
+      <h3 data-i18n="player.page.aimsHeading">Aims</h3>
       <ul id="aimsList"></ul>
     </div>
-    <div id="playerStage" class="stage" aria-label="Play Stage"></div>
+    <div id="playerStage" class="stage" aria-label="Play Stage" data-i18n-attr="aria-label:common.aria.playerStage"></div>
     <div id="overlay" class="overlay" aria-hidden="true"></div>
   </section>
 
   <aside class="pane controls-pane">
-    <h2>Controls</h2>
+    <h2 data-i18n="player.page.controlsHeading">Controls</h2>
     <div id="statusMessages" class="status-messages" role="status" aria-live="polite"></div>
     <form id="rulesetControls" class="ruleset-controls" aria-labelledby="rulesetControlsTitle">
       <div class="ruleset-controls__header">
-        <h3 id="rulesetControlsTitle">Rulesets</h3>
-        <p class="ruleset-controls__hint">Select the combinations you believe are valid for this scenario.</p>
+        <h3 id="rulesetControlsTitle" data-i18n="player.page.rulesetsHeading">Rulesets</h3>
+        <p class="ruleset-controls__hint" data-i18n="player.page.rulesetsHint">Select the combinations you believe are valid for this scenario.</p>
       </div>
       <fieldset class="ruleset-controls__fieldset">
-        <legend class="sr-only">Scenario rulesets</legend>
-        <p id="rulesetEmptyMessage" class="ruleset-controls__empty" hidden>No rulesets defined for this scenario.</p>
+        <legend class="sr-only" data-i18n="player.page.rulesetsLegend">Scenario rulesets</legend>
+        <p id="rulesetEmptyMessage" class="ruleset-controls__empty" hidden data-i18n="player.page.rulesetsEmpty">No rulesets defined for this scenario.</p>
         <ul id="rulesetList" class="ruleset-controls__list"></ul>
       </fieldset>
     </form>
     <div class="controls-stack">
-      <button id="btnConnect">Connect All</button>
-      <button id="btnSubmit">Submit My Design</button>
-      <button id="btnReset">Reset</button>
+      <button id="btnConnect" data-i18n="player.page.buttons.connectAll">Connect All</button>
+      <button id="btnSubmit" data-i18n="player.page.buttons.submit">Submit My Design</button>
+      <button id="btnReset" data-i18n="player.page.buttons.reset">Reset</button>
     </div>
   </aside>
 </main>
 
 <footer class="bar foot">
-  <small>Drag, place on anchors, connect, submit. Animations show per-aim success/fail.</small>
+  <small data-i18n="player.page.footerTip">Drag, place on anchors, connect, submit. Animations show per-aim success/fail.</small>
 </footer>
 
+<script type="module" src="js/player/player-boot.js"></script>
 <script type="module" src="js/player/player-app.js"></script>
 </body>
 </html>

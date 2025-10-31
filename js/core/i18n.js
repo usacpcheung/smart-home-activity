@@ -10,6 +10,20 @@ let config = {
 let currentLocale = null;
 let currentCatalog = {};
 let localeReadyPromise = Promise.resolve();
+const localeListeners = new Set();
+
+function notifyLocaleChange(locale, catalog) {
+  localeListeners.forEach(listener => {
+    if (typeof listener !== 'function') {
+      return;
+    }
+    try {
+      listener({ locale, catalog });
+    } catch (error) {
+      console.error('Locale change listener failed', error);
+    }
+  });
+}
 
 async function fetchCatalog(locale) {
   if (!locale) {
@@ -131,6 +145,7 @@ export async function loadLocale(locale) {
       document.documentElement.lang = targetLocale;
     }
 
+    notifyLocaleChange(targetLocale, catalog);
     return catalog;
   })();
 
@@ -166,4 +181,17 @@ export function getCurrentLocale() {
 
 export function getAvailableLocales() {
   return config.availableLocales.length ? [...new Set(config.availableLocales)] : Array.from(cache.keys());
+}
+
+export function addLocaleChangeListener(listener) {
+  if (typeof listener === 'function') {
+    localeListeners.add(listener);
+  }
+  return () => {
+    localeListeners.delete(listener);
+  };
+}
+
+export function removeLocaleChangeListener(listener) {
+  localeListeners.delete(listener);
 }

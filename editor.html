@@ -3,49 +3,50 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Editor — Smart Home Activity</title>
+  <title data-i18n="editor.page.title">Editor — Smart Home Activity</title>
   <link rel="stylesheet" href="css/base.css"/>
   <link rel="stylesheet" href="css/editor.css"/>
 </head>
 <body>
 <header class="bar bar--header">
-  <h1>Editor</h1>
-  <a class="btn" href="index.html">← Back to Home</a>
+  <h1 data-i18n="editor.page.heading">Editor</h1>
+  <a class="btn" href="index.html" data-i18n="common.nav.backToHome">← Back to Home</a>
 </header>
 
 <main class="grid editor-grid">
   <aside class="pane">
-    <h2>1) Allowed Devices</h2>
-    <div id="catalogPanel"><em>Loading catalog…</em></div>
+    <h2 data-i18n="editor.page.steps.allowedDevices">1) Allowed Devices</h2>
+    <div id="catalogPanel"><em data-i18n="common.status.loadingCatalog">Loading catalog…</em></div>
 
-    <h2>2) Upload Background</h2>
+    <h2 data-i18n="editor.page.steps.uploadBackground">2) Upload Background</h2>
     <input type="file" id="bgUpload" accept=".png,.jpg,.jpeg,.svg"/>
 
-    <h2>3) Aims & Rules</h2>
+    <h2 data-i18n="editor.page.steps.aimsRules">3) Aims &amp; Rules</h2>
     <div id="aimsPanel"></div>
     <div id="rulesPanel"></div>
 
-    <h2>4) Rulesets</h2>
+    <h2 data-i18n="editor.page.steps.rulesets">4) Rulesets</h2>
     <div id="rulesetsPanel"></div>
 
-    <h2>Export / Import</h2>
+    <h2 data-i18n="editor.page.steps.exportImport">Export / Import</h2>
     <div class="row">
-      <button id="btnSaveScenario" type="button">Save Draft</button>
-      <button id="btnExport">Export scenario.json</button>
+      <button id="btnSaveScenario" type="button" data-i18n="editor.page.buttons.saveDraft">Save Draft</button>
+      <button id="btnExport" data-i18n="editor.page.buttons.exportScenario">Export scenario.json</button>
       <input type="file" id="importJson" accept=".json"/>
     </div>
   </aside>
 
   <section class="stage-wrap">
-    <div id="stage" class="stage" aria-label="Editor Stage (click to add anchors)"></div>
+    <div id="stage" class="stage" aria-label="Editor Stage (click to add anchors)" data-i18n-attr="aria-label:common.aria.editorStage"></div>
     <div id="anchorsPanel" class="anchors-panel"></div>
   </section>
 </main>
 
 <footer class="bar foot">
-  <small>Tip: Anchors store normalized coordinates (0..1) for reuse across sizes.</small>
+  <small data-i18n="editor.page.footerTip">Tip: Anchors store normalized coordinates (0..1) for reuse across sizes.</small>
 </footer>
 
+<script type="module" src="js/editor/editor-boot.js"></script>
 <script type="module" src="js/editor/editor-app.js"></script>
 </body>
 </html>
