@@ -177,7 +177,15 @@
             "nestedGroupNote": "Nested groups cannot contain additional subgroups. Use the top-level group to reorganize clauses.",
             "subgroupWarning": "Subgroups can only be added to the main group.",
             "groupingWarning": "Grouping clauses is only supported at the top level.",
-            "addAimsFirst": "Add aims before configuring rules."
+            "addAimsFirst": "Add aims before configuring rules.",
+            "validation": {
+                "depthLimit": "Rules support only one level of subgroups. Move nested groups to the top level.",
+                "aimLabel": "Aim \"{aimId}\"",
+                "checkLabel": "Check {index}",
+                "unknownLocation": "unknown location",
+                "issueDetail": "{label} has unsupported nested groups ({location}).",
+                "summary": "{details} Rules currently support at most one level of subgroups."
+            }
         },
         "exportImport": {
             "noScenario": "No scenario loaded to export.",
@@ -185,6 +193,40 @@
             "unableToLoad": "Unable to load the selected scenario file.",
             "importFailed": "Failed to import scenario. Please try again.",
             "importInvalid": "Failed to import scenario. Please ensure the file is valid."
+        }
+    },
+    "catalog": {
+        "categories": {
+            "hubs": { "name": "Hubs & Assistants" },
+            "lighting": { "name": "Lighting" },
+            "climate": { "name": "Climate Control" },
+            "security": { "name": "Security & Access" },
+            "energy": { "name": "Energy & Power" },
+            "entertainment": { "name": "Entertainment" },
+            "appliances": { "name": "Smart Appliances" },
+            "sensors": { "name": "Sensors" }
+        },
+        "devices": {
+            "voice_assistant": { "name": "Voice Assistant (Hub)" },
+            "smart_bulb": { "name": "Smart Bulb (Main Light)" },
+            "wall_switch": { "name": "Smart Wall Switch" },
+            "smart_curtain": { "name": "Smart Curtain" },
+            "smart_thermostat": { "name": "Smart Thermostat" },
+            "smart_fan": { "name": "Smart Ceiling Fan" },
+            "smart_air_conditioner": { "name": "Smart Air Conditioner" },
+            "door_lock": { "name": "Smart Door Lock" },
+            "security_camera": { "name": "Indoor Security Camera" },
+            "smart_plug": { "name": "Smart Plug" },
+            "power_strip": { "name": "Smart Power Strip" },
+            "smart_tv": { "name": "Smart TV" },
+            "smart_speaker": { "name": "Multi-room Speaker" },
+            "streaming_box": { "name": "Streaming Media Player" },
+            "smart_fridge": { "name": "Smart Refrigerator" },
+            "smart_washer": { "name": "Smart Washer" },
+            "smart_vacuum": { "name": "Smart Vacuum" },
+            "ambient_light": { "name": "Ambient Light Sensor" },
+            "motion_sensor": { "name": "Motion Sensor" },
+            "door_sensor": { "name": "Door / Window Sensor" }
         }
     },
     "player": {

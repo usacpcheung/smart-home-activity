@@ -1,3 +1,4 @@
+import { t } from '../core/i18n.js';
 import { qs } from '../core/utils.js';
 import { validateRulesStructure, MAX_RULE_GROUP_DEPTH } from '../core/rules.js';
 
@@ -15,6 +16,17 @@ const MAX_AIMS = 3;
 let rulesValidationState = { ok: true, message: '', issues: [] };
 let rulesNotice = null;
 let noticeTimeoutId = null;
+
+function translateOrDefault(key, fallback, params){
+  const translated = t(key, params);
+  if(translated && translated !== key){
+    return translated;
+  }
+  if(typeof fallback === 'function'){
+    return fallback(params);
+  }
+  return fallback;
+}
 
 function isRootPath(path){
   return !path || path === ROOT_PATH;
@@ -343,7 +355,7 @@ function createAimRow(aim, index){
   idField.className = 'aim-field';
   const idSpan = document.createElement('span');
   idSpan.className = 'aim-field__label';
-  idSpan.textContent = 'Aim ID';
+  idSpan.textContent = translateOrDefault('editor.aims.fields.id', 'Aim ID');
   const idInput = document.createElement('input');
   idInput.type = 'text';
   idInput.name = 'aim-id';
@@ -356,7 +368,7 @@ function createAimRow(aim, index){
   textField.className = 'aim-field aim-field--wide';
   const textSpan = document.createElement('span');
   textSpan.className = 'aim-field__label';
-  textSpan.textContent = 'Description';
+  textSpan.textContent = translateOrDefault('editor.aims.fields.description', 'Description');
   const textInput = document.createElement('textarea');
   textInput.name = 'aim-text';
   textInput.rows = 2;
@@ -373,7 +385,7 @@ function createAimRow(aim, index){
   const removeBtn = document.createElement('button');
   removeBtn.type = 'button';
   removeBtn.dataset.action = 'delete-aim';
-  removeBtn.textContent = 'Remove aim';
+  removeBtn.textContent = translateOrDefault('editor.aims.remove', 'Remove aim');
   actions.appendChild(removeBtn);
   row.appendChild(actions);
 
@@ -386,7 +398,7 @@ export function renderAimsEditor(){
   const scenario = getScenario();
   aimsPanel.innerHTML = '';
   if(!scenario){
-    aimsPanel.textContent = 'No scenario loaded.';
+    aimsPanel.textContent = translateOrDefault('common.status.noScenario', 'No scenario loaded.');
     return;
   }
   const aims = Array.isArray(scenario.aims) ? scenario.aims : [];
@@ -394,7 +406,7 @@ export function renderAimsEditor(){
   if(aims.length === 0){
     const empty = document.createElement('p');
     empty.className = 'aims-empty';
-    empty.textContent = 'No aims yet. Add one to describe your learning goals.';
+    empty.textContent = translateOrDefault('editor.aims.empty', 'No aims yet. Add one to describe your learning goals.');
     aimsPanel.appendChild(empty);
   }
 
@@ -406,12 +418,16 @@ export function renderAimsEditor(){
   addBtn.type = 'button';
   addBtn.dataset.action = 'add-aim';
   addBtn.className = 'aims-add';
-  addBtn.textContent = 'Add aim';
+  addBtn.textContent = translateOrDefault('editor.aims.add', 'Add aim');
   const limitReached = aims.length >= MAX_AIMS;
   addBtn.disabled = limitReached;
   addBtn.setAttribute('aria-disabled', limitReached ? 'true' : 'false');
   if(limitReached){
-    addBtn.title = `You can create up to ${MAX_AIMS} aims.`;
+    addBtn.title = translateOrDefault(
+      'editor.aims.limitTooltip',
+      () => `You can create up to ${MAX_AIMS} aims.`,
+      { limit: MAX_AIMS }
+    );
   } else {
     addBtn.removeAttribute('title');
   }
@@ -420,7 +436,11 @@ export function renderAimsEditor(){
   if(limitReached){
     const limitMessage = document.createElement('p');
     limitMessage.className = 'aims-limit-message';
-    limitMessage.textContent = `You can add up to ${MAX_AIMS} aims. Remove an aim to add another.`;
+    limitMessage.textContent = translateOrDefault(
+      'editor.aims.limitMessage',
+      () => `You can add up to ${MAX_AIMS} aims. Remove an aim to add another.`,
+      { limit: MAX_AIMS }
+    );
     aimsPanel.appendChild(limitMessage);
   }
 }
@@ -480,7 +500,7 @@ function createRulesetRow(ruleset, index){
   const deleteBtn = document.createElement('button');
   deleteBtn.type = 'button';
   deleteBtn.dataset.action = 'delete-ruleset';
-  deleteBtn.textContent = 'Remove';
+  deleteBtn.textContent = translateOrDefault('editor.rulesets.remove', 'Remove');
   header.appendChild(deleteBtn);
   row.appendChild(header);
 
@@ -488,7 +508,7 @@ function createRulesetRow(ruleset, index){
   textField.className = 'ruleset-field ruleset-field--text';
   const textLabel = document.createElement('span');
   textLabel.className = 'ruleset-field__label';
-  textLabel.textContent = 'Rule text';
+  textLabel.textContent = translateOrDefault('editor.rulesets.fields.text', 'Rule text');
   const textarea = document.createElement('textarea');
   textarea.name = 'ruleset-text';
   textarea.rows = 3;
@@ -506,7 +526,7 @@ function createRulesetRow(ruleset, index){
   toggleField.appendChild(toggleInput);
   const toggleText = document.createElement('span');
   toggleText.className = 'ruleset-field__label';
-  toggleText.textContent = 'Mark as correct';
+  toggleText.textContent = translateOrDefault('editor.rulesets.fields.correct', 'Mark as correct');
   toggleField.appendChild(toggleText);
   row.appendChild(toggleField);
 
@@ -519,7 +539,7 @@ export function renderRulesetsEditor(){
   const scenario = getScenario();
   rulesetsPanel.innerHTML = '';
   if(!scenario){
-    rulesetsPanel.textContent = 'No scenario loaded.';
+    rulesetsPanel.textContent = translateOrDefault('common.status.noScenario', 'No scenario loaded.');
     return;
   }
 
@@ -527,7 +547,10 @@ export function renderRulesetsEditor(){
   if(rulesets.length === 0){
     const empty = document.createElement('p');
     empty.className = 'rulesets-empty';
-    empty.textContent = 'No rulesets yet. Add one to define acceptable rule combinations.';
+    empty.textContent = translateOrDefault(
+      'editor.rulesets.empty',
+      'No rulesets yet. Add one to define acceptable rule combinations.'
+    );
     rulesetsPanel.appendChild(empty);
   }
 
@@ -541,7 +564,7 @@ export function renderRulesetsEditor(){
   addBtn.type = 'button';
   addBtn.dataset.action = 'add-ruleset';
   addBtn.className = 'rulesets-add';
-  addBtn.textContent = 'Add ruleset';
+  addBtn.textContent = translateOrDefault('editor.rulesets.add', 'Add ruleset');
   actions.appendChild(addBtn);
   rulesetsPanel.appendChild(actions);
 }
@@ -605,7 +628,7 @@ function createClauseRow(aimId, clause, path, options){
   selection.appendChild(selectInput);
   const selectText = document.createElement('span');
   selectText.className = 'rule-field__label';
-  selectText.textContent = 'Select';
+  selectText.textContent = translateOrDefault('editor.rules.select', 'Select');
   selection.appendChild(selectText);
   row.appendChild(selection);
 
@@ -613,12 +636,12 @@ function createClauseRow(aimId, clause, path, options){
   deviceField.className = 'rule-field';
   const deviceLabel = document.createElement('span');
   deviceLabel.className = 'rule-field__label';
-  deviceLabel.textContent = 'Device';
+  deviceLabel.textContent = translateOrDefault('editor.rules.device', 'Device');
   const deviceSelect = document.createElement('select');
   deviceSelect.name = 'device';
   const emptyDevice = document.createElement('option');
   emptyDevice.value = '';
-  emptyDevice.textContent = 'Select device';
+  emptyDevice.textContent = translateOrDefault('editor.rules.selectDevice', 'Select device');
   deviceSelect.appendChild(emptyDevice);
   deviceOptions.forEach(opt => {
     const option = document.createElement('option');
@@ -635,12 +658,12 @@ function createClauseRow(aimId, clause, path, options){
   anchorField.className = 'rule-field';
   const anchorLabel = document.createElement('span');
   anchorLabel.className = 'rule-field__label';
-  anchorLabel.textContent = 'Anchor';
+  anchorLabel.textContent = translateOrDefault('editor.rules.anchor', 'Anchor');
   const anchorSelect = document.createElement('select');
   anchorSelect.name = 'anchor';
   const emptyAnchor = document.createElement('option');
   emptyAnchor.value = '';
-  emptyAnchor.textContent = 'Select anchor';
+  emptyAnchor.textContent = translateOrDefault('editor.rules.selectAnchor', 'Select anchor');
   anchorSelect.appendChild(emptyAnchor);
   anchorOptions.forEach(opt => {
     const option = document.createElement('option');
@@ -657,7 +680,7 @@ function createClauseRow(aimId, clause, path, options){
   removeBtn.type = 'button';
   removeBtn.dataset.action = 'delete-clause';
   removeBtn.dataset.path = path;
-  removeBtn.textContent = 'Remove';
+  removeBtn.textContent = translateOrDefault('editor.rules.removeClause', 'Remove');
   row.appendChild(removeBtn);
 
   return row;
@@ -681,15 +704,17 @@ function renderGroup(aimId, group, path, options){
   operatorField.className = 'rule-field rule-field--operator';
   const operatorLabel = document.createElement('span');
   operatorLabel.className = 'rule-field__label';
-  operatorLabel.textContent = path === ROOT_PATH ? 'Require' : 'Group logic';
+  operatorLabel.textContent = path === ROOT_PATH
+    ? translateOrDefault('editor.rules.require', 'Require')
+    : translateOrDefault('editor.rules.groupLogic', 'Group logic');
   const operatorSelect = document.createElement('select');
   operatorSelect.name = 'group-operator';
   const andOption = document.createElement('option');
   andOption.value = 'and';
-  andOption.textContent = 'ALL (AND)';
+  andOption.textContent = translateOrDefault('editor.rules.all', 'ALL (AND)');
   const orOption = document.createElement('option');
   orOption.value = 'or';
-  orOption.textContent = 'ANY (OR)';
+  orOption.textContent = translateOrDefault('editor.rules.any', 'ANY (OR)');
   operatorSelect.appendChild(andOption);
   operatorSelect.appendChild(orOption);
   operatorSelect.value = group.operator === 'or' ? 'or' : 'and';
@@ -707,7 +732,7 @@ function renderGroup(aimId, group, path, options){
     removeGroupBtn.type = 'button';
     removeGroupBtn.dataset.action = 'delete-group';
     removeGroupBtn.dataset.path = path;
-    removeGroupBtn.textContent = 'Remove group';
+    removeGroupBtn.textContent = translateOrDefault('editor.rules.removeGroup', 'Remove group');
     removeGroupBtn.disabled = group.children.length > 0;
     header.appendChild(removeGroupBtn);
   }
@@ -720,7 +745,7 @@ function renderGroup(aimId, group, path, options){
   if(!Array.isArray(group.children) || group.children.length === 0){
     const empty = document.createElement('p');
     empty.className = 'rules-empty';
-    empty.textContent = 'No clauses in this group yet.';
+    empty.textContent = translateOrDefault('editor.rules.emptyGroup', 'No clauses in this group yet.');
     childrenContainer.appendChild(empty);
   } else {
     group.children.forEach((child, idx) => {
@@ -742,7 +767,7 @@ function renderGroup(aimId, group, path, options){
   addClauseBtn.type = 'button';
   addClauseBtn.dataset.action = 'add-clause';
   addClauseBtn.dataset.path = path;
-  addClauseBtn.textContent = 'Add clause';
+  addClauseBtn.textContent = translateOrDefault('editor.rules.addClause', 'Add clause');
   controls.appendChild(addClauseBtn);
 
   if(path === ROOT_PATH){
@@ -750,20 +775,23 @@ function renderGroup(aimId, group, path, options){
     addGroupBtn.type = 'button';
     addGroupBtn.dataset.action = 'add-group';
     addGroupBtn.dataset.path = path;
-    addGroupBtn.textContent = 'Add subgroup';
+    addGroupBtn.textContent = translateOrDefault('editor.rules.addSubgroup', 'Add subgroup');
     controls.appendChild(addGroupBtn);
 
     const groupSelectedBtn = document.createElement('button');
     groupSelectedBtn.type = 'button';
     groupSelectedBtn.dataset.action = 'group-selected';
     groupSelectedBtn.dataset.path = path;
-    groupSelectedBtn.textContent = 'Group selected';
+    groupSelectedBtn.textContent = translateOrDefault('editor.rules.groupSelected', 'Group selected');
     groupSelectedBtn.disabled = !Array.isArray(group.children) || group.children.length < 2;
     controls.appendChild(groupSelectedBtn);
   } else {
     const note = document.createElement('p');
     note.className = 'rules-note';
-    note.textContent = 'Nested groups cannot contain additional subgroups. Use the top-level group to reorganize clauses.';
+    note.textContent = translateOrDefault(
+      'editor.rules.nestedGroupNote',
+      'Nested groups cannot contain additional subgroups. Use the top-level group to reorganize clauses.'
+    );
     controls.appendChild(note);
   }
 
@@ -813,7 +841,7 @@ export function renderRulesEditor(){
   const scenario = getScenario();
   rulesPanel.innerHTML = '';
   if(!scenario){
-    rulesPanel.textContent = 'No scenario loaded.';
+    rulesPanel.textContent = translateOrDefault('common.status.noScenario', 'No scenario loaded.');
     return;
   }
 
@@ -831,7 +859,7 @@ export function renderRulesEditor(){
   if(aims.length === 0){
     const empty = document.createElement('p');
     empty.className = 'rules-empty rules-empty--global';
-    empty.textContent = 'Add aims before configuring rules.';
+    empty.textContent = translateOrDefault('editor.rules.addAimsFirst', 'Add aims before configuring rules.');
     rulesPanel.appendChild(empty);
     return;
   }
@@ -842,7 +870,11 @@ export function renderRulesEditor(){
     catalog.categories.forEach(cat => {
       (cat.devices || []).forEach(dev => {
         if (dev && dev.id) {
-          allDevices.push({ value: dev.id, label: dev.name || dev.id });
+          const fallbackName = dev.name || dev.id;
+          const label = dev.nameKey
+            ? translateOrDefault(dev.nameKey, fallbackName)
+            : translateOrDefault(`catalog.devices.${dev.id}.name`, fallbackName);
+          allDevices.push({ value: dev.id, label });
         }
       });
     });
@@ -1039,7 +1071,10 @@ function addClauseToGroup(aimId, groupPath){
 function addGroupToGroup(aimId, groupPath){
   const targetPath = groupPath || ROOT_PATH;
   if(!isRootPath(targetPath)){
-    setRulesNotice('Subgroups can only be added to the main group.', 'warning');
+    setRulesNotice(
+      translateOrDefault('editor.rules.subgroupWarning', 'Subgroups can only be added to the main group.'),
+      'warning'
+    );
     renderRulesEditor();
     return;
   }
@@ -1077,7 +1112,10 @@ function removeGroupAtPath(aimId, groupPath){
 function wrapSelectedClauses(aimId, groupPath, clausePaths){
   const targetPath = groupPath || ROOT_PATH;
   if(!isRootPath(targetPath)){
-    setRulesNotice('Grouping clauses is only supported at the top level.', 'warning');
+    setRulesNotice(
+      translateOrDefault('editor.rules.groupingWarning', 'Grouping clauses is only supported at the top level.'),
+      'warning'
+    );
     renderRulesEditor();
     return;
   }
