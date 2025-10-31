@@ -1,3 +1,4 @@
+import { t } from '../core/i18n.js';
 import { qs } from '../core/utils.js';
 import { renderRulesEditor } from './aims-rules.js';
 
@@ -13,6 +14,17 @@ let pendingFileName = null;
 let activeDrag = null;
 let suppressStageClick = false;
 let persistDraftCallback = null;
+
+function translateOrDefault(key, fallback, params){
+  const translated = t(key, params);
+  if(translated && translated !== key){
+    return translated;
+  }
+  if(typeof fallback === 'function'){
+    return fallback(params);
+  }
+  return fallback;
+}
 
 function persistScenarioDraft(){
   if(typeof persistDraftCallback === 'function'){
@@ -290,7 +302,11 @@ function getAllowedDeviceOptions(){
   if(catalog?.categories){
     catalog.categories.forEach(cat=>{
       (cat.devices || []).forEach(device=>{
-        lookup.set(device.id, { id: device.id, name: device.name || device.id });
+        const fallbackName = device.name || device.id;
+        const name = device.nameKey
+          ? translateOrDefault(device.nameKey, fallbackName)
+          : translateOrDefault(`catalog.devices.${device.id}.name`, fallbackName);
+        lookup.set(device.id, { id: device.id, name });
       });
     });
   }
@@ -321,7 +337,7 @@ export function renderAnchorsPanel(){
 
   if(!anchors.length){
     const empty = document.createElement('p');
-    empty.textContent = 'No anchors yet. Click the stage to add one.';
+    empty.textContent = translateOrDefault('editor.anchors.empty', 'No anchors yet. Click the stage to add one.');
     anchorsPanel.appendChild(empty);
     return;
   }
@@ -355,21 +371,24 @@ export function renderAnchorsPanel(){
     row.className = 'anchor-row';
     row.dataset.index = String(index);
 
-    row.appendChild(createLabeledTextInput('ID', 'id', anchor.id || ''));
-    row.appendChild(createLabeledTextInput('Label', 'label', anchor.label || ''));
-    row.appendChild(createLabeledTextInput('Type', 'type', anchor.type || ''));
+    row.appendChild(createLabeledTextInput(translateOrDefault('editor.anchors.fields.id', 'ID'), 'id', anchor.id || ''));
+    row.appendChild(createLabeledTextInput(translateOrDefault('editor.anchors.fields.label', 'Label'), 'label', anchor.label || ''));
+    row.appendChild(createLabeledTextInput(translateOrDefault('editor.anchors.fields.type', 'Type'), 'type', anchor.type || ''));
 
     const acceptsFieldset = document.createElement('fieldset');
     acceptsFieldset.className = 'anchor-accepts';
 
     const legend = document.createElement('legend');
-    legend.textContent = 'Allowed Devices';
+    legend.textContent = translateOrDefault('editor.anchors.allowedDevices', 'Allowed Devices');
     acceptsFieldset.appendChild(legend);
 
     if(!allowedOptions.length){
       const emptyMessage = document.createElement('p');
       emptyMessage.className = 'anchor-accepts__empty';
-      emptyMessage.textContent = 'Select allowed devices to configure anchor access.';
+      emptyMessage.textContent = translateOrDefault(
+        'editor.anchors.allowedDevicesEmpty',
+        'Select allowed devices to configure anchor access.'
+      );
       acceptsFieldset.appendChild(emptyMessage);
     } else {
       allowedOptions.forEach(device => {
@@ -397,7 +416,7 @@ export function renderAnchorsPanel(){
     deleteBtn.type = 'button';
     deleteBtn.className = 'btn-delete';
     deleteBtn.dataset.action = 'delete';
-    deleteBtn.textContent = 'Delete';
+    deleteBtn.textContent = translateOrDefault('editor.anchors.delete', 'Delete');
     row.appendChild(deleteBtn);
 
     anchorsPanel.appendChild(row);

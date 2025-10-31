@@ -1,8 +1,16 @@
 import { loadCatalog } from '../core/catalog.js';
+import { t, addLocaleChangeListener } from '../core/i18n.js';
 import { saveLocal, loadLocal } from '../core/storage.js';
 import { qs } from '../core/utils.js';
 import { initStage, renderAnchorsPanel } from './image-stage.js';
-import { initAimsRules, renderRulesEditor, getRulesValidationState, showRulesNotice } from './aims-rules.js';
+import {
+  initAimsRules,
+  renderAimsEditor,
+  renderRulesEditor,
+  renderRulesetsEditor,
+  getRulesValidationState,
+  showRulesNotice
+} from './aims-rules.js';
 import { initExportImport } from './export-import.js';
 
 const state = {
@@ -166,7 +174,9 @@ export function saveScenarioDraft({ warnOnInvalidRules = true } = {}) {
   if (warnOnInvalidRules) {
     const validation = typeof getRulesValidationState === 'function' ? getRulesValidationState() : null;
     if (validation && validation.ok === false) {
-      const warningMessage = validation.message || 'Scenario saved, but rule validation reported issues. Review highlighted rules before exporting.';
+      const defaultMessage = 'Scenario saved, but rule validation reported issues. Review highlighted rules before exporting.';
+      const translated = validation.message || t('editor.scenario.ruleValidationWarning');
+      const warningMessage = translated && translated !== 'editor.scenario.ruleValidationWarning' ? translated : defaultMessage;
       showRulesNotice(warningMessage, 'warning', { duration: 6000 });
     }
   }
@@ -211,6 +221,12 @@ async function init(){
   initAimsRules(state, { persistScenarioDraft });
   initExportImport(state, { hydrateScenario, persistScenarioDraft, renderCatalog });
   bindManualSaveControl();
+  addLocaleChangeListener(() => {
+    renderCatalog();
+    renderAimsEditor();
+    renderRulesEditor();
+    renderRulesetsEditor();
+  });
   // Editor subsystems are ready once the catalog is loaded; subsequent modules
   // manage stage rendering, anchor editing, aims/rules authoring, import/export,
   // and manual save controls tied to local draft persistence.
@@ -258,7 +274,8 @@ function renderCatalog(){
     });
 
     const headerText = document.createElement('span');
-    headerText.textContent = cat.name;
+    const categoryName = translateCatalogEntry(cat, cat.name || cat.id);
+    headerText.textContent = categoryName;
 
     headerLabel.appendChild(catCheckbox);
     headerLabel.appendChild(headerText);
@@ -282,8 +299,20 @@ function renderCatalog(){
       });
 
       const deviceName = document.createElement('span');
-      const connectivity = (d.connectivity || []).join(', ') || 'n/a';
-      deviceName.innerHTML = `${d.name} <small>(${connectivity})</small>`;
+      const resolvedName = translateCatalogEntry(d, d.name || d.id);
+      const connectivityList = (d.connectivity || []).join(', ');
+      const connectivityFallback = translateOrFallback('common.status.notAvailable', 'n/a');
+      const connectivity = connectivityList || connectivityFallback;
+
+      const nameNode = document.createElement('span');
+      nameNode.textContent = resolvedName;
+
+      const connectivityNode = document.createElement('small');
+      connectivityNode.textContent = `(${connectivity})`;
+
+      deviceName.appendChild(nameNode);
+      deviceName.appendChild(document.createTextNode(' '));
+      deviceName.appendChild(connectivityNode);
 
       deviceLabel.appendChild(deviceCheckbox);
       deviceLabel.appendChild(deviceName);
@@ -297,5 +326,26 @@ function renderCatalog(){
 
   renderAnchorsPanel();
   renderRulesEditor();
+}
+
+function translateOrFallback(key, fallback){
+  if(!key){
+    return fallback;
+  }
+  const translated = t(key);
+  if(translated && translated !== key){
+    return translated;
+  }
+  return fallback;
+}
+
+function translateCatalogEntry(entry, fallback){
+  if(!entry){
+    return fallback;
+  }
+  if(entry.nameKey){
+    return translateOrFallback(entry.nameKey, fallback);
+  }
+  return fallback;
 }
 init();
