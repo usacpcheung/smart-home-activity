@@ -69,6 +69,7 @@
             "invalidJson": "Invalid JSON format.",
             "unexpectedError": "Unexpected error.",
             "sampleUnavailableShort": "Sample scenario is not available. Please refresh and try again.",
+            "missingEntry": "Selected scenario is no longer available. Please upload it again.",
             "storageUnavailablePlay": "Local storage is not available. Unable to play stored scenarios.",
             "storageUnavailableClear": "Local storage is not available. Nothing to clear.",
             "slotEmpty": "Scenario slot is already empty.",

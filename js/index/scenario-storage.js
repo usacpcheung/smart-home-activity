@@ -1,4 +1,4 @@
-import { getCurrentLocale } from '../core/i18n.js';
+import { addLocaleChangeListener, getCurrentLocale, onLocaleReady, t } from '../core/i18n.js';
 import { I18N_CONFIG } from '../core/i18n-config.js';
 import { appendLocaleToUrl, getStoredLocale, getLocaleFromQuery } from '../core/locale-preferences.js';
 
@@ -24,7 +24,7 @@ function initializeScenarioTable() {
 
   if (emptyStateEl) {
     emptyStateEl.hidden = false;
-    emptyStateEl.textContent = 'Loading sample scenario…';
+    emptyStateEl.textContent = t('index.scenarioStorage.loadingSample');
   }
 
   renderStoredScenarios();
@@ -37,10 +37,10 @@ function initializeScenarioTable() {
     .catch((error) => {
       console.warn('Failed to load sample scenario', error);
       sampleScenarioEntry = null;
-      setFeedback('Sample scenario could not be loaded. Upload a scenario JSON to get started.', 'error');
+      setFeedback(t('index.scenarioStorage.sampleLoadError'), 'error');
       if (emptyStateEl) {
         emptyStateEl.hidden = false;
-        emptyStateEl.textContent = 'Sample scenario is unavailable. Upload a scenario JSON to continue.';
+        emptyStateEl.textContent = t('index.scenarioStorage.sampleUnavailable');
       }
     })
     .finally(() => {
@@ -59,12 +59,12 @@ async function loadSampleScenario() {
     const { errors, scenario } = validateAndNormalize(rawScenario);
 
     if (errors.length > 0 || !scenario) {
-      throw new Error(errors.join(' ') || 'Sample scenario is invalid.');
+      throw new Error(errors.join(' ') || t('index.scenarioStorage.errors.sampleInvalid'));
     }
 
     sampleScenarioEntry = {
       id: SAMPLE_SCENARIO_ID,
-      title: scenario.meta.title || 'Sample Scenario',
+      title: scenario.meta.title || t('common.status.sampleScenario'),
       uploadedAt: null,
       filename: SAMPLE_SCENARIO_FILENAME,
       scenario,
@@ -84,7 +84,7 @@ const storageAvailable = (() => {
     window.localStorage.removeItem(probeKey);
     return true;
   } catch (error) {
-    setFeedback('Local storage is not available. Uploaded scenarios will not be saved.', 'error');
+    setFeedback(t('index.scenarioStorage.storageUnavailable'), 'error');
     return false;
   }
 })();
@@ -124,6 +124,20 @@ window.addEventListener('storage', (event) => {
   }
 });
 
+if (tableEl) {
+  onLocaleReady()
+    .then(() => {
+      renderStoredScenarios();
+    })
+    .catch((error) => {
+      console.error('Failed to refresh stored scenarios after locale initialization', error);
+    });
+
+  addLocaleChangeListener(() => {
+    renderStoredScenarios();
+  });
+}
+
 if (uploadInput) {
   uploadInput.addEventListener('change', async (event) => {
     const file = event.target.files && event.target.files[0];
@@ -131,7 +145,7 @@ if (uploadInput) {
       return;
     }
 
-    setFeedback('Reading scenario file…', 'info');
+    setFeedback(t('index.scenarioStorage.readingFile'), 'info');
 
     try {
       const text = await readFileAsText(file);
@@ -139,13 +153,14 @@ if (uploadInput) {
       const { errors, scenario, notes } = validateAndNormalize(rawScenario);
 
       if (errors.length > 0) {
-        setFeedback(`Upload failed: ${errors.join(' ')}`, 'error');
+        const reason = errors.join(' ');
+        setFeedback(t('index.scenarioStorage.uploadFailed', { reason }), 'error');
       } else if (!storageAvailable) {
-        setFeedback('Local storage is not available. Scenario could not be saved.', 'error');
+        setFeedback(t('index.scenarioStorage.storageUnavailableSave'), 'error');
       } else {
-        const chosenTitle = promptForTitle(scenario.meta.title, 'Enter a title for this scenario:');
+        const chosenTitle = promptForTitle(scenario.meta.title, t('index.scenarioStorage.promptTitle'));
         if (chosenTitle === null) {
-          setFeedback('Upload canceled. Scenario was not saved.', 'info');
+          setFeedback(t('index.scenarioStorage.uploadCanceled'), 'info');
           return;
         }
 
@@ -154,15 +169,18 @@ if (uploadInput) {
         const { slotIndex, entries } = storeScenario(scenario, file.name);
         renderStoredScenarios(entries);
         const noteSuffix = notes.length > 0 ? ` ${notes.join(' ')}` : '';
-        setFeedback(`Saved "${scenario.meta.title}" to slot ${slotIndex + 1}.` + noteSuffix, 'success');
+        setFeedback(t('index.scenarioStorage.savedToSlot', {
+          title: scenario.meta.title,
+          slot: slotIndex + 1
+        }) + noteSuffix, 'success');
       }
     } catch (error) {
       const reason = error instanceof SyntaxError
-        ? 'Invalid JSON format.'
+        ? t('index.scenarioStorage.invalidJson')
         : (error && typeof error.message === 'string' && error.message.length > 0
           ? error.message
-          : 'Unexpected error.');
-      setFeedback(`Upload failed: ${reason}`, 'error');
+          : t('index.scenarioStorage.unexpectedError'));
+      setFeedback(t('index.scenarioStorage.uploadFailed', { reason }), 'error');
     } finally {
       // Reset so the same file can be uploaded again if needed.
       event.target.value = '';
@@ -173,7 +191,7 @@ if (uploadInput) {
 function handlePlay(entryId) {
   if (entryId === SAMPLE_SCENARIO_ID) {
     if (!sampleScenarioEntry) {
-      setFeedback('Sample scenario is not available. Please refresh and try again.', 'error');
+      setFeedback(t('index.scenarioStorage.sampleUnavailableShort'), 'error');
       return;
     }
 
@@ -184,13 +202,13 @@ function handlePlay(entryId) {
   }
 
   if (!storageAvailable) {
-    setFeedback('Local storage is not available. Unable to play stored scenarios.', 'error');
+    setFeedback(t('index.scenarioStorage.storageUnavailablePlay'), 'error');
     return;
   }
 
   const entry = getStoredScenario(entryId);
   if (!entry) {
-    setFeedback('Selected scenario is no longer available. Please upload it again.', 'error');
+    setFeedback(t('index.scenarioStorage.missingEntry'), 'error');
     renderStoredScenarios();
     return;
   }
@@ -202,52 +220,52 @@ function handlePlay(entryId) {
 
 function handleClear(entryId) {
   if (entryId === SAMPLE_SCENARIO_ID) {
-    setFeedback('Sample scenario cannot be cleared.', 'info');
+    setFeedback(t('index.scenarioStorage.sampleCannotBeCleared'), 'info');
     return;
   }
 
   if (!storageAvailable) {
-    setFeedback('Local storage is not available. Nothing to clear.', 'error');
+    setFeedback(t('index.scenarioStorage.storageUnavailableClear'), 'error');
     return;
   }
 
   const entry = getStoredScenario(entryId);
   if (!entry) {
-    setFeedback('Scenario slot is already empty.', 'info');
+    setFeedback(t('index.scenarioStorage.slotEmpty'), 'info');
     renderStoredScenarios();
     return;
   }
 
   const entries = removeScenario(entryId);
   renderStoredScenarios(entries);
-  const title = entry.title || 'Untitled scenario';
-  setFeedback(`Cleared "${title}" from stored scenarios.`, 'info');
+  const title = entry.title || t('common.status.untitledScenario');
+  setFeedback(t('index.scenarioStorage.clearedFromStorage', { title }), 'info');
 }
 
 function handleEditTitle(entryId) {
   const isSample = entryId === SAMPLE_SCENARIO_ID;
 
   if (isSample && !sampleScenarioEntry) {
-    setFeedback('Sample scenario is not available. Please refresh and try again.', 'error');
+    setFeedback(t('index.scenarioStorage.sampleUnavailableShort'), 'error');
     return;
   }
 
-  let currentTitle = 'Untitled scenario';
+  let currentTitle = t('common.status.untitledScenario');
   if (isSample) {
     currentTitle = sampleScenarioEntry.title || currentTitle;
   } else {
     const storedEntry = getStoredScenario(entryId);
     if (!storedEntry) {
-      setFeedback('Selected scenario is no longer available. Please upload it again.', 'error');
+      setFeedback(t('index.scenarioStorage.missingEntry'), 'error');
       renderStoredScenarios();
       return;
     }
     currentTitle = storedEntry.title || currentTitle;
   }
 
-  const updatedTitle = promptForTitle(currentTitle, 'Update the title for this scenario:');
+  const updatedTitle = promptForTitle(currentTitle, t('index.scenarioStorage.updateTitlePrompt'));
   if (updatedTitle === null) {
-    setFeedback('Title update canceled.', 'info');
+    setFeedback(t('index.scenarioStorage.titleUpdateCanceled'), 'info');
     return;
   }
 
@@ -257,18 +275,18 @@ function handleEditTitle(entryId) {
       sampleScenarioEntry.scenario.meta.title = updatedTitle;
     }
     renderStoredScenarios();
-    setFeedback(`Sample scenario renamed to "${updatedTitle}".`, 'success');
+    setFeedback(t('index.scenarioStorage.sampleRenamed', { title: updatedTitle }), 'success');
     return;
   }
 
   const updatedEntries = updateStoredScenarioTitle(entryId, updatedTitle);
   if (!updatedEntries) {
-    setFeedback('Unable to update the scenario title. Please try again.', 'error');
+    setFeedback(t('index.scenarioStorage.renameFailed'), 'error');
     return;
   }
 
   renderStoredScenarios(updatedEntries);
-  setFeedback(`Scenario renamed to "${updatedTitle}".`, 'success');
+  setFeedback(t('index.scenarioStorage.scenarioRenamed', { title: updatedTitle }), 'success');
 }
 
 function renderStoredScenarios(entriesOverride) {
@@ -288,11 +306,11 @@ function renderStoredScenarios(entriesOverride) {
     tableEl.hidden = true;
     emptyStateEl.hidden = false;
     if (sampleLoading) {
-      emptyStateEl.textContent = 'Loading sample scenario…';
+      emptyStateEl.textContent = t('index.scenarioStorage.loadingSample');
     } else {
       emptyStateEl.textContent = storageAvailable
-        ? 'No uploaded scenarios yet.'
-        : 'Local storage is not available. Uploaded scenarios cannot be stored.';
+        ? t('index.scenarioStorage.emptyStates.none')
+        : t('index.scenarioStorage.storageUnavailableList');
     }
     return;
   }
@@ -305,18 +323,18 @@ function renderStoredScenarios(entriesOverride) {
     row.dataset.entryId = entry.id;
 
     row.appendChild(createCell(String(index + 1)));
-    row.appendChild(createCell(entry.title || 'Untitled'));
-    row.appendChild(createCell(entry.filename || '—'));
+    row.appendChild(createCell(entry.title || t('common.status.untitledFallback')));
+    row.appendChild(createCell(entry.filename || t('common.status.notProvided')));
     row.appendChild(createCell(formatUploadedAt(entry.uploadedAt)));
 
     const actionsCell = document.createElement('td');
     actionsCell.className = 'stored-scenarios-actions';
-    actionsCell.appendChild(createActionButton('Edit title', 'edit-title'));
-    actionsCell.appendChild(createActionButton('Play', 'play'));
+    actionsCell.appendChild(createActionButton(t('index.scenarioStorage.actions.editTitle'), 'edit-title'));
+    actionsCell.appendChild(createActionButton(t('index.scenarioStorage.actions.play'), 'play'));
 
-    const clearButton = createActionButton('Clear', 'clear', entry.isSample ? {
+    const clearButton = createActionButton(t('index.scenarioStorage.actions.clear'), 'clear', entry.isSample ? {
       disabled: true,
-      title: 'Sample scenario cannot be cleared.'
+      title: t('index.scenarioStorage.sampleCannotBeCleared')
     } : undefined);
     actionsCell.appendChild(clearButton);
     row.appendChild(actionsCell);
@@ -375,7 +393,7 @@ function readFileAsText(file) {
       if (typeof reader.result === 'string') {
         resolve(reader.result);
       } else {
-        reject(new Error('File content could not be read as text.'));
+        reject(new Error(t('index.scenarioStorage.fileReadError')));
       }
     };
     reader.onerror = () => reject(reader.error);
@@ -388,7 +406,7 @@ function validateAndNormalize(rawScenario) {
   const notes = [];
 
   if (typeof rawScenario !== 'object' || rawScenario === null) {
-    errors.push('Scenario JSON must be an object.');
+    errors.push(t('index.scenarioStorage.errors.invalidScenarioObject'));
     return { errors, scenario: null, notes };
   }
 
@@ -400,7 +418,7 @@ function validateAndNormalize(rawScenario) {
 
   const title = scenario.meta.title;
   if (typeof title !== 'string' || title.trim().length === 0) {
-    errors.push('Missing "meta.title" string.');
+    errors.push(t('index.scenarioStorage.errors.missingMetaTitle'));
   } else {
     scenario.meta.title = title.trim();
   }
@@ -411,7 +429,7 @@ function validateAndNormalize(rawScenario) {
 
   const background = scenario.stage.background;
   if (typeof background !== 'string' || background.trim().length === 0) {
-    errors.push('Missing "stage.background" string.');
+    errors.push(t('index.scenarioStorage.errors.missingStageBackground'));
   } else {
     const { value, note, error } = normalizeBackground(background);
     if (error) {
@@ -425,9 +443,9 @@ function validateAndNormalize(rawScenario) {
   }
 
   if (typeof scenario.devicePool !== 'object' || scenario.devicePool === null) {
-    errors.push('Missing "devicePool" object.');
+    errors.push(t('index.scenarioStorage.errors.missingDevicePool'));
   } else if (!Array.isArray(scenario.devicePool.allowedDeviceIds)) {
-    errors.push('"devicePool.allowedDeviceIds" must be an array.');
+    errors.push(t('index.scenarioStorage.errors.missingAllowedIds'));
   }
 
   return { errors, scenario, notes };
@@ -442,11 +460,11 @@ function normalizeBackground(background) {
   try {
     const absoluteUrl = new URL(trimmed, window.location.href).href;
     if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) {
-      return { value: absoluteUrl, note: 'Converted background path to an absolute URL.' };
+      return { value: absoluteUrl, note: t('index.scenarioStorage.notes.convertedBackground') };
     }
     return { value: absoluteUrl };
   } catch (error) {
-    return { error: 'Invalid "stage.background" URL.' };
+    return { error: t('index.scenarioStorage.errors.invalidBackgroundUrl') };
   }
 }
 
@@ -536,17 +554,17 @@ function removeScenario(entryId) {
 
 function formatUploadedAt(value) {
   if (!value) {
-    return '—';
+    return t('common.status.notProvided');
   }
 
   try {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) {
-      return '—';
+      return t('common.status.notProvided');
     }
     return date.toLocaleString();
   } catch (error) {
-    return '—';
+    return t('common.status.notProvided');
   }
 }
 
@@ -564,7 +582,7 @@ function promptForTitle(defaultTitle, message) {
       return trimmed;
     }
 
-    setFeedback('Title cannot be empty. Please provide a title.', 'error');
+    setFeedback(t('common.messages.titleCannotBeEmpty'), 'error');
     promptDefault = '';
   }
 }
