@@ -1,6 +1,14 @@
 import { t } from './i18n.js';
 
 const TRANSLATABLE_SELECTOR = '[data-i18n], [data-i18n-html], [data-i18n-attr]';
+const DYNAMIC_BLOCK_ATTRIBUTE = 'data-i18n-dynamic';
+
+function isDynamic(element) {
+  if (!element || typeof element.hasAttribute !== 'function') {
+    return false;
+  }
+  return element.hasAttribute(DYNAMIC_BLOCK_ATTRIBUTE);
+}
 
 function applyText(element, key) {
   if (!key) {
@@ -46,6 +54,9 @@ function applyAttributes(element, mapping) {
 }
 
 function translateElement(element) {
+  if (isDynamic(element)) {
+    return;
+  }
   const htmlKey = element.getAttribute('data-i18n-html');
   const textApplied = applyHtml(element, htmlKey);
   if (!textApplied) {
