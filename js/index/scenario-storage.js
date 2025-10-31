@@ -17,6 +17,10 @@ const emptyStateEl = document.getElementById('storedScenariosEmpty');
 let sampleScenarioEntry = null;
 let sampleScenarioLoadPromise = null;
 
+if (emptyStateEl) {
+  emptyStateEl.setAttribute('data-i18n-dynamic', 'true');
+}
+
 function initializeScenarioTable() {
   if (!tableEl) {
     return;
