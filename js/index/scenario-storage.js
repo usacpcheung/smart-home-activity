@@ -1,3 +1,7 @@
+import { getCurrentLocale } from '../core/i18n.js';
+import { I18N_CONFIG } from '../core/i18n-config.js';
+import { appendLocaleToUrl, getStoredLocale, getLocaleFromQuery } from '../core/locale-preferences.js';
+
 const STORAGE_KEY = 'uploadedScenarios';
 const MAX_ENTRIES = 3;
 const SAMPLE_SCENARIO_ID = 'sample-scenario';
@@ -173,7 +177,9 @@ function handlePlay(entryId) {
       return;
     }
 
-    window.location.href = `player.html?scenario=${encodeURIComponent(SAMPLE_SCENARIO_URL)}`;
+    const locale = resolveActiveLocale();
+    const destination = appendLocaleToUrl(`player.html?scenario=${encodeURIComponent(SAMPLE_SCENARIO_URL)}`, locale);
+    window.location.href = destination;
     return;
   }
 
@@ -189,7 +195,9 @@ function handlePlay(entryId) {
     return;
   }
 
-  window.location.href = `player.html?storedSlot=${encodeURIComponent(entry.id)}`;
+  const locale = resolveActiveLocale();
+  const destination = appendLocaleToUrl(`player.html?storedSlot=${encodeURIComponent(entry.id)}`, locale);
+  window.location.href = destination;
 }
 
 function handleClear(entryId) {
@@ -560,3 +568,8 @@ function promptForTitle(defaultTitle, message) {
     promptDefault = '';
   }
 }
+function resolveActiveLocale() {
+  const fallback = I18N_CONFIG?.defaultLocale || null;
+  return getCurrentLocale() || getLocaleFromQuery() || getStoredLocale() || fallback;
+}
+

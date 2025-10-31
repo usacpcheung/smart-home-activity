@@ -66,6 +66,52 @@ a:not(.btn):focus {
   flex-wrap: wrap;
 }
 
+.bar__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.locale-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.locale-switcher label {
+  margin: 0;
+}
+
+.locale-switcher select {
+  appearance: none;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  padding: 6px 14px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  min-width: 120px;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.locale-switcher select:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.locale-switcher select:focus-visible {
+  outline: none;
+  border-color: #fff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35);
+}
+
+.locale-switcher select option {
+  color: var(--color-text);
+}
+
 .bar--header h1 {
   margin: 0;
   font-weight: 600;

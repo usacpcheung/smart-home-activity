@@ -6,6 +6,12 @@
         "nav": {
             "backToHome": "← Back to Home"
         },
+        "locale": {
+            "label": "Language",
+            "names": {
+                "en": "English"
+            }
+        },
         "status": {
             "loading": "Loading…",
             "loadingCatalog": "Loading catalog…",

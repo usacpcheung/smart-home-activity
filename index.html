@@ -7,8 +7,14 @@
   <link rel="stylesheet" href="css/base.css"/>
 </head>
 <body>
-<header class="bar">
+<header class="bar bar--header">
   <h1 data-i18n="index.page.heading">Smart Home Activity</h1>
+  <div class="bar__actions">
+    <div class="locale-switcher" data-locale-switcher>
+      <label for="localeSelect" data-i18n="common.locale.label">Language</label>
+      <select id="localeSelect" data-locale-selector></select>
+    </div>
+  </div>
 </header>
 
 <main class="container">
@@ -17,7 +23,7 @@
     <p data-i18n="index.page.editorDescription">Editor: build scenarios (upload background, mark anchors, choose devices, define aims/rules, export JSON).</p>
     <p data-i18n="index.page.playerDescription">Player: students play a scenario (device selection, placement, connect, submit, animations).</p>
     <div class="row">
-      <a class="btn" href="editor.html" data-i18n="index.page.openEditor">Open Editor</a>
+      <a class="btn" href="editor.html" data-preserve-locale data-i18n="index.page.openEditor">Open Editor</a>
     </div>
   </section>
 
