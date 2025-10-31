@@ -2,9 +2,10 @@ import { loadCatalog } from '../core/catalog.js';
 import { evaluate } from '../core/engine.js';
 import { validateRulesStructure } from '../core/rules.js';
 import { qs } from '../core/utils.js';
+import { addLocaleChangeListener, onLocaleReady, t } from '../core/i18n.js';
 import { renderStage as renderStageView, refreshAnchorFeedback, setAnchorFeedbackEvaluator, setStageConnectionState, syncAnchorPlacements } from './stage-runtime.js';
-import { runEvaluationAnimations as dispatchEvaluationAnimations } from './animations.js';
-import { createAudioManager } from './audio.js';
+import { runEvaluationAnimations as dispatchEvaluationAnimations, setAnimationTranslator } from './animations.js';
+import { createAudioManager, setAudioTranslator } from './audio.js';
 
 const STORED_SCENARIOS_KEY = 'uploadedScenarios';
 const DEFAULT_SCENARIO_URL = 'scenarios/case01/scenario.json';
@@ -30,6 +31,28 @@ const AudioContextCtor = typeof globalThis !== 'undefined'
   ? (globalThis.AudioContext || globalThis.webkitAudioContext || null)
   : null;
 let placementAudioContext = null;
+
+setAnimationTranslator((key, params) => t(key, params));
+setAudioTranslator((key, params) => t(key, params));
+
+function translateOrDefault(key, fallback, params) {
+  if (!key) {
+    return fallback;
+  }
+  const result = t(key, params);
+  if (typeof result === 'string' && result.length && result !== key) {
+    return result;
+  }
+  return fallback;
+}
+
+function translateCatalogName(entry, fallback) {
+  const base = typeof fallback === 'string' && fallback.length ? fallback : '';
+  if (!entry?.nameKey) {
+    return base;
+  }
+  return translateOrDefault(entry.nameKey, base);
+}
 
 function ensurePlacementAudioContext() {
   if (!AudioContextCtor) {
@@ -170,22 +193,28 @@ function getRulesetLabel(id) {
   return typeof match?.text === 'string' && match.text.trim() ? match.text.trim() : id;
 }
 
-function formatRulesetNames(ids, { fallback = 'none selected' } = {}) {
+function formatRulesetNames(ids, { fallback } = {}) {
   const source = Array.isArray(ids) ? ids : [];
   const labels = source
     .map((id) => getRulesetLabel(id))
     .map((label) => (typeof label === 'string' ? label.trim() : ''))
     .filter((label) => label.length > 0);
   if (!labels.length) {
-    return fallback;
+    const defaultFallback = translateOrDefault('common.status.noneSelected', 'none selected');
+    return typeof fallback === 'string' && fallback.length ? fallback : defaultFallback;
   }
   return labels.join(', ');
 }
 
 function formatLockedRulesetMessage(rulesetId, wasSelected) {
-  const rulesetName = getRulesetLabel(rulesetId) || rulesetId || 'ruleset';
-  const statusWord = wasSelected ? 'active' : 'inactive';
-  return `Connect devices before changing rulesets. "${rulesetName}" remains ${statusWord}.`;
+  const fallbackName = rulesetId || translateOrDefault('player.rulesets.nameFallback', 'ruleset');
+  const rulesetName = getRulesetLabel(rulesetId) || fallbackName;
+  const stateKey = wasSelected ? 'common.status.active' : 'common.status.inactive';
+  const statusWord = translateOrDefault(stateKey, wasSelected ? 'active' : 'inactive');
+  return translateOrDefault('player.rulesets.lockedMessage', `Connect devices before changing rulesets. "${rulesetName}" remains ${statusWord}.`, {
+    name: rulesetName,
+    state: statusWord
+  });
 }
 
 function onRulesetCheckboxChange(event) {
@@ -210,10 +239,10 @@ function onRulesetCheckboxChange(event) {
   const label = getRulesetLabel(rulesetId) || rulesetId;
   if (checkbox.checked) {
     selectedSet.add(rulesetId);
-    pushStatus(`Activated ${label}.`, 'success');
+    pushStatus(translateOrDefault('player.rulesets.activated', `Activated ${label}.`, { label }), 'success');
   } else {
     selectedSet.delete(rulesetId);
-    pushStatus(`Deactivated ${label}.`, 'info');
+    pushStatus(translateOrDefault('player.rulesets.deactivated', `Deactivated ${label}.`, { label }), 'info');
   }
 }
 
@@ -318,7 +347,7 @@ function updateRulesetInteractivity() {
     if (label) {
       label.classList.toggle('ruleset-controls__label--locked', locked);
       if (locked) {
-        label.setAttribute('title', 'Connect devices before changing rulesets.');
+        label.setAttribute('title', translateOrDefault('player.rulesets.lockTooltip', 'Connect devices before changing rulesets.'));
       } else {
         label.removeAttribute('title');
       }
@@ -390,13 +419,17 @@ function syncConnectButton(button) {
   if (!button) {
     return;
   }
-  button.textContent = state.connected ? 'Disconnect All' : 'Connect All';
+  const labelKey = state.connected
+    ? 'player.page.buttons.disconnectAll'
+    : 'player.page.buttons.connectAll';
+  const fallbackLabel = state.connected ? 'Disconnect All' : 'Connect All';
+  button.textContent = translateOrDefault(labelKey, fallbackLabel);
   button.setAttribute('aria-pressed', state.connected ? 'true' : 'false');
   const shouldLock = !state.connected && state.placements.length === 0;
   button.disabled = shouldLock;
   if (shouldLock) {
     button.setAttribute('aria-disabled', 'true');
-    button.title = 'Place at least one device before connecting all.';
+    button.title = translateOrDefault('player.connect.tooltip', 'Place at least one device before connecting all.');
   } else {
     button.removeAttribute('aria-disabled');
     button.removeAttribute('title');
@@ -448,8 +481,9 @@ function findAnchor(anchorId) {
 function formatPlacementNames(deviceId, anchorId) {
   const device = getDeviceMeta(deviceId);
   const anchor = findAnchor(anchorId);
-  const deviceName = device?.name || deviceId || 'device';
-  const anchorName = anchor?.label || anchor?.id || 'anchor';
+  const deviceFallback = device?.name || deviceId || translateOrDefault('player.stage.deviceNameFallback', 'device');
+  const deviceName = translateCatalogName(device, deviceFallback) || deviceFallback;
+  const anchorName = anchor?.label || anchor?.id || translateOrDefault('player.stage.anchorNameFallback', 'anchor');
   return { deviceName, anchorName };
 }
 
@@ -522,20 +556,23 @@ function removePlacement(deviceId, anchorId) {
 
   state.placements.splice(index, 1);
   const { deviceName, anchorName } = formatPlacementNames(deviceId, anchorId);
-  pushStatus(`Removed ${deviceName} from ${anchorName}.`, 'info');
+  pushStatus(translateOrDefault('player.placements.removed', `Removed ${deviceName} from ${anchorName}.`, {
+    device: deviceName,
+    anchor: anchorName
+  }), 'info');
   updateStagePlacements();
   if (!state.connected && state.placements.length === 0) {
-    pushStatus('Place at least one device to enable Connect All.', 'warn');
+    pushStatus(translateOrDefault('player.placements.needsPlacement', 'Place at least one device to enable Connect All.'), 'warn');
   }
 }
 
 function attemptPlacement(deviceId, anchorId) {
   if (!deviceId) {
-    pushStatus('Select a device before choosing an anchor.', 'warn');
+    pushStatus(translateOrDefault('player.placements.selectDeviceFirst', 'Select a device before choosing an anchor.'), 'warn');
     return false;
   }
   if (!anchorId) {
-    pushStatus('Anchor not recognized for placement.', 'error');
+    pushStatus(translateOrDefault('player.placements.anchorNotRecognized', 'Anchor not recognized for placement.'), 'error');
     return false;
   }
   if (state.audioManager) {
@@ -543,39 +580,50 @@ function attemptPlacement(deviceId, anchorId) {
   }
   const anchor = findAnchor(anchorId);
   if (!anchor) {
-    pushStatus('Anchor not recognized for placement.', 'error');
+    pushStatus(translateOrDefault('player.placements.anchorNotRecognized', 'Anchor not recognized for placement.'), 'error');
     return false;
   }
 
   const accepts = Array.isArray(anchor.accepts) ? anchor.accepts : [];
   if (accepts.length && !accepts.includes(deviceId)) {
     const { deviceName, anchorName } = formatPlacementNames(deviceId, anchorId);
-    pushStatus(`${deviceName} cannot be placed at ${anchorName}.`, 'warn');
+    pushStatus(translateOrDefault('player.placements.deviceNotAllowed', `${deviceName} cannot be placed at ${anchorName}.`, {
+      device: deviceName,
+      anchor: anchorName
+    }), 'warn');
     return false;
   }
 
   const placementsForAnchor = state.placements.filter((entry) => entry.anchorId === anchorId);
   if (placementsForAnchor.length >= 4) {
     const { anchorName } = formatPlacementNames(deviceId, anchorId);
-    pushStatus(`${anchorName} already has four devices placed.`, 'warn');
+    pushStatus(translateOrDefault('player.placements.anchorFull', `${anchorName} already has four devices placed.`, {
+      anchor: anchorName
+    }), 'warn');
     return false;
   }
 
   const existing = placementsForAnchor.find((entry) => entry.deviceId === deviceId);
   if (existing) {
     const { deviceName, anchorName } = formatPlacementNames(deviceId, anchorId);
-    pushStatus(`${deviceName} is already placed at ${anchorName}.`, 'info');
+    pushStatus(translateOrDefault('player.placements.deviceAlreadyPlaced', `${deviceName} is already placed at ${anchorName}.`, {
+      device: deviceName,
+      anchor: anchorName
+    }), 'info');
     return false;
   }
 
   const hadPlacements = state.placements.length > 0;
   state.placements.push({ deviceId, anchorId });
   const { deviceName, anchorName } = formatPlacementNames(deviceId, anchorId);
-  pushStatus(`Placed ${deviceName} at ${anchorName}.`, 'success');
+  pushStatus(translateOrDefault('player.placements.placed', `Placed ${deviceName} at ${anchorName}.`, {
+    device: deviceName,
+    anchor: anchorName
+  }), 'success');
   playPlacementSound();
   updateStagePlacements();
   if (!state.connected && !hadPlacements && state.placements.length > 0) {
-    pushStatus('Connect All is now available.', 'info');
+    pushStatus(translateOrDefault('player.connect.connectAvailable', 'Connect All is now available.'), 'info');
   }
   return true;
 }
@@ -671,7 +719,7 @@ async function init(){
   if (storedSlotId) {
     scenarioInfo = loadScenarioFromStorage(storedSlotId);
     if (!scenarioInfo) {
-      pushStatus('Stored scenario not available. Loading default sample scenario.', 'warn');
+      pushStatus(translateOrDefault('player.load.storedUnavailable', 'Stored scenario not available. Loading default sample scenario.'), 'warn');
     }
   }
 
@@ -680,13 +728,13 @@ async function init(){
     scenarioInfo = await loadScenarioFromUrl(requestedUrl);
 
     if (!scenarioInfo && requestedUrl !== DEFAULT_SCENARIO_URL) {
-      pushStatus('Falling back to default sample scenario.', 'warn');
+      pushStatus(translateOrDefault('player.load.fallbackToDefault', 'Falling back to default sample scenario.'), 'warn');
       scenarioInfo = await loadScenarioFromUrl(DEFAULT_SCENARIO_URL);
     }
   }
 
   if (!scenarioInfo) {
-    pushStatus('Unable to load a scenario.', 'error');
+    pushStatus(translateOrDefault('player.load.unableToLoad', 'Unable to load a scenario.'), 'error');
     return;
   }
 
@@ -722,7 +770,9 @@ async function init(){
   updateStagePlacements();
   bindStageInteractions();
   bindUI();
-  pushStatus('Scenario loaded: ' + (state.scenario?.meta?.title || 'untitled'));
+  const fallbackTitle = translateOrDefault('common.status.untitledScenario', 'Untitled scenario');
+  const scenarioTitle = state.scenario?.meta?.title || fallbackTitle;
+  pushStatus(translateOrDefault('player.load.scenarioLoaded', `Scenario loaded: ${scenarioTitle}`, { title: scenarioTitle }));
 }
 
 function renderAims(){
@@ -755,14 +805,27 @@ function renderAims(){
 }
 
 function renderDeviceList(){
-  const allowedIds = state.scenario?.devicePool?.allowedDeviceIds || [];
+  const allowedIds = Array.isArray(state.scenario?.devicePool?.allowedDeviceIds)
+    ? state.scenario.devicePool.allowedDeviceIds
+    : [];
   const allowed = new Set(allowedIds);
-  const list = qs('#deviceList'); list.innerHTML = '';
+  const list = qs('#deviceList');
+  if (!list) {
+    return;
+  }
+  list.innerHTML = '';
+  const previousPending = state.pendingDeviceId;
   setPendingDevice(null);
+  if (!state.catalog) {
+    return;
+  }
   state.catalog.categories.forEach(cat=>{
     const group = cat.devices.filter(d=>allowed.has(d.id));
     if(!group.length) return;
-    const h = document.createElement('h3'); h.textContent = cat.name; list.appendChild(h);
+    const h = document.createElement('h3');
+    const fallbackName = cat.name || cat.id || translateOrDefault('common.status.untitledFallback', 'Untitled');
+    h.textContent = translateCatalogName(cat, fallbackName);
+    list.appendChild(h);
     group.forEach(d=>{
       const card = document.createElement('div');
       card.className='device-card';
@@ -771,7 +834,9 @@ function renderDeviceList(){
 
       const icon = document.createElement('img');
       icon.className = 'device-card__icon';
-      icon.alt = d.name;
+      const fallbackLabel = d.name || d.id || translateOrDefault('player.stage.deviceFallback', 'Device');
+      const deviceLabel = translateCatalogName(d, fallbackLabel) || fallbackLabel;
+      icon.alt = deviceLabel;
       icon.loading = 'lazy';
       if (d.icon) {
         icon.src = `assets/device-icons/${d.icon}.png`;
@@ -789,13 +854,16 @@ function renderDeviceList(){
 
       const label = document.createElement('span');
       label.className = 'device-card__label';
-      label.textContent = d.name;
+      label.textContent = deviceLabel;
 
       card.append(icon, label);
       bindDeviceCardInteractions(card, d);
       list.appendChild(card);
     });
   });
+  if (previousPending) {
+    setPendingDevice(previousPending);
+  }
 }
 
 function scenarioDir(rel){
@@ -838,7 +906,11 @@ async function loadScenarioFromUrl(url) {
       baseUrl: scenarioDir(url)
     };
   } catch (error) {
-    pushStatus(`Failed to load scenario from ${url}: ${error.message}`, 'error');
+    const errorMessage = error && typeof error.message === 'string' ? error.message : String(error);
+    pushStatus(translateOrDefault('player.load.failedFromUrl', `Failed to load scenario from ${url}: ${errorMessage}`, {
+      url,
+      error: errorMessage
+    }), 'error');
     console.error('Failed to load scenario from URL', error);
     return null;
   }
@@ -885,13 +957,19 @@ function bindUI(){
       syncConnectButton(connectBtn);
       updateRulesetInteractivity();
       const selectedIds = Array.from(ensureSelectedRulesetSet());
-      const summary = formatRulesetNames(selectedIds, { fallback: 'none selected' });
+      const summary = formatRulesetNames(selectedIds);
       const tone = state.connected ? 'success' : 'info';
-      const verb = state.connected ? 'connected' : 'disconnected';
+      const verbKey = state.connected ? 'connected' : 'disconnected';
+      const verb = translateOrDefault(`player.connect.verbs.${verbKey}`, verbKey);
       const lockMessage = state.connected
-        ? 'Ruleset controls unlocked.'
-        : 'Ruleset controls locked until devices are connected.';
-      pushStatus(`Devices ${verb}. ${lockMessage} Active rulesets: ${summary}.`, tone);
+        ? translateOrDefault('player.rulesets.controlsUnlocked', 'Ruleset controls unlocked.')
+        : translateOrDefault('player.rulesets.controlsLocked', 'Ruleset controls locked until devices are connected.');
+      const message = translateOrDefault('player.connect.buttonStatus', `Devices ${verb}. ${lockMessage} Active rulesets: ${summary}.`, {
+        verb,
+        lockMessage,
+        summary
+      });
+      pushStatus(message, tone);
       updateStagePlacements();
     });
     syncConnectButton(connectBtn);
@@ -909,10 +987,21 @@ function bindUI(){
   }
 }
 
+function refreshLocaleDependentUI() {
+  renderDeviceList();
+  updateStagePlacements();
+  const connectBtn = qs('#btnConnect');
+  if (connectBtn) {
+    syncConnectButton(connectBtn);
+  }
+  updateRulesetInteractivity();
+}
+
 async function onSubmit(){
   const validation = validateRulesStructure(state.scenario?.rules?.checks || []);
   if(!validation.ok){
-    const message = validation.message || 'Rules contain unsupported nested groups. Unable to evaluate.';
+    const fallbackMessage = translateOrDefault('player.status.rulesValidationFailed', 'Rules contain unsupported nested groups. Unable to evaluate.');
+    const message = typeof validation.message === 'string' && validation.message.length ? validation.message : fallbackMessage;
     pushStatus(message, 'error');
     console.error('Rules validation failed', validation);
     return;
@@ -920,32 +1009,45 @@ async function onSubmit(){
   const outcome = evaluate(state.scenario, state.placements, state.connected);
   const rulesetResult = evaluateRulesetSelection();
   const { total, passed } = updateAimStatus(outcome);
-  const baseMessage = total > 0
-    ? `Evaluation complete: ${passed}/${total} aims satisfied.`
-    : 'Evaluation complete.';
+  const messageParts = [];
+  if (total > 0) {
+    messageParts.push(translateOrDefault('player.status.evaluationCompleteWithCounts', `Evaluation complete: ${passed}/${total} aims satisfied.`, {
+      passed,
+      total
+    }));
+  } else {
+    messageParts.push(translateOrDefault('player.status.evaluationComplete', 'Evaluation complete.'));
+  }
 
-  let message = baseMessage;
   if (rulesetResult) {
     if (!rulesetResult.evaluated) {
       if (state.availableRulesets.length > 0) {
-        message += ' Ruleset selection not evaluated.';
+        messageParts.push(translateOrDefault('player.status.rulesetNotEvaluated', 'Ruleset selection not evaluated.'));
       } else {
-        message += ' No rulesets provided for this scenario.';
+        messageParts.push(translateOrDefault('player.status.noRulesets', 'No rulesets provided for this scenario.'));
       }
     } else if (rulesetResult.matched) {
-      message += ' Ruleset selection correct.';
+      messageParts.push(translateOrDefault('player.status.rulesetCorrect', 'Ruleset selection correct.'));
     } else {
       const detailParts = [];
       if (rulesetResult.missingLabels.length) {
-        detailParts.push(`missing: ${rulesetResult.missingLabels.join(', ')}`);
+        detailParts.push(translateOrDefault('player.status.rulesetMissing', `missing: ${rulesetResult.missingLabels.join(', ')}`, {
+          labels: rulesetResult.missingLabels.join(', ')
+        }));
       }
       if (rulesetResult.extraLabels.length) {
-        detailParts.push(`unexpected: ${rulesetResult.extraLabels.join(', ')}`);
+        detailParts.push(translateOrDefault('player.status.rulesetUnexpected', `unexpected: ${rulesetResult.extraLabels.join(', ')}`, {
+          labels: rulesetResult.extraLabels.join(', ')
+        }));
       }
-      const detailSuffix = detailParts.length ? ` (${detailParts.join('; ')})` : '';
-      message += ` Ruleset selection incorrect${detailSuffix}.`;
+      const details = detailParts.length ? ` (${detailParts.join('; ')})` : '';
+      messageParts.push(translateOrDefault('player.status.rulesetIncorrect', `Ruleset selection incorrect${details}.`, {
+        details
+      }));
     }
   }
+
+  const message = messageParts.join(' ');
 
   let tone = 'info';
   if (total > 0 && passed === total && (rulesetResult?.matched !== false)) {
@@ -974,13 +1076,13 @@ async function onSubmit(){
     if (!target) {
       return;
     }
-    try {
-      await target;
-    } catch (error) {
-      if (warningLabel) {
-        console.warn(warningLabel, error);
+      try {
+        await target;
+      } catch (error) {
+        if (warningLabel) {
+          console.warn(warningLabel, error);
+        }
       }
-    }
   };
 
   try {
@@ -995,13 +1097,14 @@ async function onSubmit(){
         try {
           playback = audioManager.playAim({ passed: entry.result === 'pass' });
         } catch (error) {
-          console.warn('Aim audio playback failed', error);
+          const aimWarning = translateOrDefault('player.audio.warnings.aimPlaybackFailed', 'Aim audio playback failed');
+          console.warn(aimWarning, error);
           return;
         }
         if (!playback) {
           return;
         }
-        return awaitPlayback(playback, 'Aim audio playback failed');
+        return awaitPlayback(playback, translateOrDefault('player.audio.warnings.aimPlaybackFailed', 'Aim audio playback failed'));
       },
       onRulesetReveal: async () => {
         if (!audioManager || !rulesetResult) {
@@ -1014,13 +1117,14 @@ async function onSubmit(){
             evaluated: rulesetResult.evaluated
           });
         } catch (error) {
-          console.warn('Ruleset audio playback failed', error);
+          const rulesetWarning = translateOrDefault('player.audio.warnings.rulesetPlaybackFailed', 'Ruleset audio playback failed');
+          console.warn(rulesetWarning, error);
           return;
         }
         if (!playback) {
           return;
         }
-        return awaitPlayback(playback, 'Ruleset audio playback failed');
+        return awaitPlayback(playback, translateOrDefault('player.audio.warnings.rulesetPlaybackFailed', 'Ruleset audio playback failed'));
       }
     });
   } catch (error) {
@@ -1082,4 +1186,17 @@ function pushStatus(message, tone = 'info'){
   statusEl.scrollTop = statusEl.scrollHeight;
 }
 
-init();
+onLocaleReady()
+  .then(() => init())
+  .then(() => {
+    refreshLocaleDependentUI();
+    addLocaleChangeListener(() => {
+      if (!state.scenario || !state.catalog) {
+        return;
+      }
+      refreshLocaleDependentUI();
+    });
+  })
+  .catch((error) => {
+    console.error('Failed to initialize player app', error);
+  });

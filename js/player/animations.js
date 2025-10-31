@@ -3,6 +3,29 @@ const activeTimers = new Set();
 let activeSequenceToken = 0;
 const sequenceCancelResolvers = new Set();
 let overlayEl = null;
+let translate = null;
+
+function translateOrFallback(key, fallback, params) {
+  if (!key) {
+    return fallback;
+  }
+  const translator = translate;
+  if (typeof translator === 'function') {
+    try {
+      const result = translator(key, params);
+      if (typeof result === 'string' && result.length && result !== key) {
+        return result;
+      }
+    } catch (error) {
+      console.warn('Evaluation animation translation failed', error);
+    }
+  }
+  return fallback;
+}
+
+export function setAnimationTranslator(fn) {
+  translate = typeof fn === 'function' ? fn : null;
+}
 
 function clearTimeoutCompat(id) {
   const clear = typeof globalThis !== 'undefined' && typeof globalThis.clearTimeout === 'function'
@@ -101,11 +124,13 @@ function createAimCard({ aimId, label, result, index }) {
 
   const title = document.createElement('p');
   title.className = 'aim-result-card__label';
-  title.textContent = label || aimId || 'Aim';
+  title.textContent = label || aimId || translateOrFallback('player.animations.aimLabel', 'Aim');
 
   const status = document.createElement('p');
   status.className = 'aim-result-card__status';
-  status.textContent = result === 'pass' ? 'Aim satisfied' : 'Aim not met';
+  status.textContent = result === 'pass'
+    ? translateOrFallback('player.animations.aimSatisfied', 'Aim satisfied')
+    : translateOrFallback('player.animations.aimNotMet', 'Aim not met');
 
   body.append(title, status);
   card.append(marker, body);
@@ -125,28 +150,32 @@ function createRulesetVerdictCard(rulesetResult, index) {
   body.className = 'ruleset-verdict__body';
 
   let status = 'neutral';
-  let headline = 'Ruleset selection not evaluated';
+  let headline = translateOrFallback('player.animations.rulesetNotEvaluated', 'Ruleset selection not evaluated');
   let detail = '';
 
   if (!rulesetResult) {
-    detail = 'No ruleset comparison was performed.';
+    detail = translateOrFallback('player.animations.rulesetNoComparison', 'No ruleset comparison was performed.');
   } else if (rulesetResult.evaluated !== true) {
-    detail = 'Connect devices and try again to score your selection.';
+    detail = translateOrFallback('player.animations.rulesetConnectPrompt', 'Connect devices and try again to score your selection.');
   } else if (rulesetResult.matched) {
     status = 'pass';
-    headline = 'Ruleset selection correct';
-    detail = 'Your chosen combinations match the expected answer.';
+    headline = translateOrFallback('player.animations.rulesetCorrect', 'Ruleset selection correct');
+    detail = translateOrFallback('player.animations.rulesetCorrectDetail', 'Your chosen combinations match the expected answer.');
   } else {
     status = 'fail';
-    headline = 'Ruleset selection incorrect';
+    headline = translateOrFallback('player.animations.rulesetIncorrect', 'Ruleset selection incorrect');
     const parts = [];
     if (Array.isArray(rulesetResult.missingLabels) && rulesetResult.missingLabels.length) {
-      parts.push(`Missing: ${rulesetResult.missingLabels.join(', ')}`);
+      parts.push(translateOrFallback('player.animations.rulesetMissing', `Missing: ${rulesetResult.missingLabels.join(', ')}`, {
+        labels: rulesetResult.missingLabels.join(', ')
+      }));
     }
     if (Array.isArray(rulesetResult.extraLabels) && rulesetResult.extraLabels.length) {
-      parts.push(`Unexpected: ${rulesetResult.extraLabels.join(', ')}`);
+      parts.push(translateOrFallback('player.animations.rulesetUnexpected', `Unexpected: ${rulesetResult.extraLabels.join(', ')}`, {
+        labels: rulesetResult.extraLabels.join(', ')
+      }));
     }
-    detail = parts.join(' • ') || 'Review the expected combinations and adjust your picks.';
+    detail = parts.join(' • ') || translateOrFallback('player.animations.rulesetReview', 'Review the expected combinations and adjust your picks.');
   }
 
   card.dataset.result = status;
