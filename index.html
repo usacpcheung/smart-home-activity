@@ -3,44 +3,44 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Smart Home Activity</title>
+  <title data-i18n="index.page.title">Smart Home Activity</title>
   <link rel="stylesheet" href="css/base.css"/>
 </head>
 <body>
 <header class="bar">
-  <h1>Smart Home Activity</h1>
+  <h1 data-i18n="index.page.heading">Smart Home Activity</h1>
 </header>
 
 <main class="container">
   <section class="card">
-    <h2>Choose Mode</h2>
-    <p><strong>Editor</strong>: build scenarios (upload background, mark anchors, choose devices, define aims/rules, export JSON).</p>
-    <p><strong>Player</strong>: students play a scenario (device selection, placement, connect, submit, animations).</p>
+    <h2 data-i18n="index.page.chooseMode">Choose Mode</h2>
+    <p data-i18n="index.page.editorDescription">Editor: build scenarios (upload background, mark anchors, choose devices, define aims/rules, export JSON).</p>
+    <p data-i18n="index.page.playerDescription">Player: students play a scenario (device selection, placement, connect, submit, animations).</p>
     <div class="row">
-      <a class="btn" href="editor.html">Open Editor</a>
+      <a class="btn" href="editor.html" data-i18n="index.page.openEditor">Open Editor</a>
     </div>
   </section>
 
   <section class="card">
-    <h3>Scenarios</h3>
-    <p>Upload your scenario folder (e.g. <code>/scenarios/mycase</code>) containing <code>scenario.json</code> and its background image.</p>
+    <h3 data-i18n="index.page.scenariosHeading">Scenarios</h3>
+    <p data-i18n="index.page.uploadInstructions">Upload your scenario folder (e.g. /scenarios/mycase) containing scenario.json and its background image.</p>
     <form class="scenario-upload" id="scenarioUploadForm">
-      <label for="scenarioUpload">Scenario JSON file</label>
+      <label for="scenarioUpload" data-i18n="index.page.uploadLabel">Scenario JSON file</label>
       <input type="file" id="scenarioUpload" name="scenarioUpload" accept="application/json"/>
-      <p class="hint">Select a <code>.json</code> file that was exported from the editor.</p>
+      <p class="hint" data-i18n="index.page.uploadHint">Select a .json file that was exported from the editor.</p>
       <div class="upload-feedback" id="scenarioUploadFeedback" role="status" aria-live="polite"></div>
     </form>
     <div class="stored-scenarios" id="storedScenariosSection">
-      <h4>Stored scenarios</h4>
-      <p class="hint" id="storedScenariosEmpty">No uploaded scenarios yet.</p>
+      <h4 data-i18n="index.page.storedHeading">Stored scenarios</h4>
+      <p class="hint" id="storedScenariosEmpty" data-i18n="index.scenarioStorage.emptyStates.none">No uploaded scenarios yet.</p>
       <table id="storedScenariosTable" class="stored-scenarios-table" hidden>
         <thead>
           <tr>
-            <th scope="col">Slot</th>
-            <th scope="col">Title</th>
-            <th scope="col">File name</th>
-            <th scope="col">Uploaded</th>
-            <th scope="col">Actions</th>
+            <th scope="col" data-i18n="index.page.table.slot">Slot</th>
+            <th scope="col" data-i18n="index.page.table.title">Title</th>
+            <th scope="col" data-i18n="index.page.table.fileName">File name</th>
+            <th scope="col" data-i18n="index.page.table.uploaded">Uploaded</th>
+            <th scope="col" data-i18n="index.page.table.actions">Actions</th>
           </tr>
         </thead>
         <tbody id="storedScenariosBody"></tbody>
@@ -50,8 +50,9 @@
 </main>
 
 <footer class="bar foot">
-  <small>Static, front-end only. Apache / GitHub Pages friendly.</small>
+  <small data-i18n="index.page.footerNote">Static, front-end only. Apache / GitHub Pages friendly.</small>
 </footer>
+<script type="module" src="js/index/index-boot.js"></script>
 <script type="module" src="js/index/scenario-storage.js"></script>
 </body>
 </html>

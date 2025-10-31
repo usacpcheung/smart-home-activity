@@ -10,6 +10,21 @@ let config = {
 let currentLocale = null;
 let currentCatalog = {};
 let localeReadyPromise = Promise.resolve();
+let latestLoadToken = 0;
+const localeListeners = new Set();
+
+function notifyLocaleChange(locale, catalog) {
+  localeListeners.forEach(listener => {
+    if (typeof listener !== 'function') {
+      return;
+    }
+    try {
+      listener({ locale, catalog });
+    } catch (error) {
+      console.error('Locale change listener failed', error);
+    }
+  });
+}
 
 async function fetchCatalog(locale) {
   if (!locale) {
@@ -89,6 +104,7 @@ export function initI18n({ defaultLocale, fallbackLocale, availableLocales } = {
 
 export async function loadLocale(locale) {
   const requestedLocale = locale || config.defaultLocale;
+  const requestToken = ++latestLoadToken;
 
   const loadSequence = (async () => {
     let targetLocale = requestedLocale;
@@ -124,13 +140,16 @@ export async function loadLocale(locale) {
       }
     }
 
-    currentLocale = targetLocale;
-    currentCatalog = catalog;
+    if (requestToken === latestLoadToken) {
+      currentLocale = targetLocale;
+      currentCatalog = catalog;
 
-    if (typeof document !== 'undefined' && document.documentElement) {
-      document.documentElement.lang = targetLocale;
+      if (typeof document !== 'undefined' && document.documentElement) {
+        document.documentElement.lang = targetLocale;
+      }
+
+      notifyLocaleChange(targetLocale, catalog);
     }
-
     return catalog;
   })();
 
@@ -166,4 +185,17 @@ export function getCurrentLocale() {
 
 export function getAvailableLocales() {
   return config.availableLocales.length ? [...new Set(config.availableLocales)] : Array.from(cache.keys());
+}
+
+export function addLocaleChangeListener(listener) {
+  if (typeof listener === 'function') {
+    localeListeners.add(listener);
+  }
+  return () => {
+    localeListeners.delete(listener);
+  };
+}
+
+export function removeLocaleChangeListener(listener) {
+  localeListeners.delete(listener);
 }
