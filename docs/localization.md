@@ -5,11 +5,14 @@
 - Keys mirror the module or UI surface that owns the copy so engineers can find usages quickly.
 - Keep this file as the canonical reference when updating or auditing text.
 
-## Add a new locale
+## Localization checklist
 1. Copy `i18n/en.json` to `i18n/<locale>.json` (for example, `i18n/es.json`).
-2. Translate the **values only**. Preserve the key structure so modules can resolve the same paths.
-3. Leave every placeholder from the table below intact. Replace only the surrounding prose.
-4. Commit the new locale file or, if it should stay private, store it under a name or folder matched by the ignore rules below.
+2. Rename the file so the basename matches the locale code you plan to ship (`es`, `fr-CA`, etc.).
+3. Translate the **values only**. Preserve the key structure so modules can resolve the same paths.
+4. Keep every placeholder exactly as it appears (see the examples below). Replace only the surrounding prose.
+5. Add the locale code to the initialization configuration so the runtime can fetch the new catalog.
+6. Run `scripts/check_locales.py` to confirm the new file carries every key that exists in English.
+7. Commit the new locale file or, if it should stay private, store it under a name or folder matched by the ignore rules below.
 
 ## Register the locale code
 When the runtime initializes i18n (see `js/core/i18n.js`), include the new locale code in the configuration:
@@ -49,7 +52,39 @@ If you maintain your own bootstrap script, make sure it passes the same locale l
 | `{issue}` | Audio error reason (missing path, unsupported type, etc.). |
 | `{source}` | Audio file path or URL that failed to load or buffer. |
 
-Placeholders use single braces (`{token}`) because `js/core/i18n.js` interpolates them at runtime.
+Placeholders use single braces (`{token}`) because `js/core/i18n.js` interpolates them at runtime. If a string contains double braces (`{{token}}`), treat the entire token—including both braces—as immutable because another formatter will resolve it later.
+
+### Placeholder examples
+```json
+"common": {
+  "status": {
+    "deviceReady": "{{device}} is ready to use.",
+    "scenarioCount": "{{count}} scenarios available."
+  }
+}
+```
+
+The Spanish translation should keep both placeholder tokens intact:
+
+```json
+"common": {
+  "status": {
+    "deviceReady": "{{device}} está listo para usar.",
+    "scenarioCount": "Hay {{count}} escenarios disponibles."
+  }
+}
+```
+
+Only translate the prose around `{{device}}` and `{{count}}`; the runtime (or templating layer) swaps the placeholders with live values.
+
+## Check for missing keys
+Use the helper script to confirm every non-English catalog includes the same set of keys as the source file:
+
+```bash
+python scripts/check_locales.py
+```
+
+Run it whenever you add new strings or before handing the files to translators. The script exits with an error code and lists the missing paths so you can patch the gaps quickly. Pass `--catalog-dir` or `--default-locale` if your project layout differs from the defaults.
 
 ## Private locale files
 Teams can keep internal or in-progress translations out of version control by placing them under `i18n/private/` or naming them `*.local.json`. Both patterns are ignored by Git (see `.gitignore`).
