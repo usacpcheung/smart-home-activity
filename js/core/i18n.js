@@ -10,6 +10,7 @@ let config = {
 let currentLocale = null;
 let currentCatalog = {};
 let localeReadyPromise = Promise.resolve();
+let latestLoadToken = 0;
 const localeListeners = new Set();
 
 function notifyLocaleChange(locale, catalog) {
@@ -103,6 +104,7 @@ export function initI18n({ defaultLocale, fallbackLocale, availableLocales } = {
 
 export async function loadLocale(locale) {
   const requestedLocale = locale || config.defaultLocale;
+  const requestToken = ++latestLoadToken;
 
   const loadSequence = (async () => {
     let targetLocale = requestedLocale;
@@ -138,14 +140,16 @@ export async function loadLocale(locale) {
       }
     }
 
-    currentLocale = targetLocale;
-    currentCatalog = catalog;
+    if (requestToken === latestLoadToken) {
+      currentLocale = targetLocale;
+      currentCatalog = catalog;
 
-    if (typeof document !== 'undefined' && document.documentElement) {
-      document.documentElement.lang = targetLocale;
+      if (typeof document !== 'undefined' && document.documentElement) {
+        document.documentElement.lang = targetLocale;
+      }
+
+      notifyLocaleChange(targetLocale, catalog);
     }
-
-    notifyLocaleChange(targetLocale, catalog);
     return catalog;
   })();
 
