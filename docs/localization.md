@@ -45,6 +45,9 @@ If you maintain your own bootstrap script, make sure it passes the same locale l
 | `{total}` | Total number of aims evaluated. |
 | `{details}` | Optional parenthetical explaining incorrect ruleset selections. |
 | `{labels}` | Human-readable list of ruleset names (missing or unexpected). |
+| `{clip}` | Audio clip label shown in playback warnings. |
+| `{issue}` | Audio error reason (missing path, unsupported type, etc.). |
+| `{source}` | Audio file path or URL that failed to load or buffer. |
 
 Placeholders use single braces (`{token}`) because `js/core/i18n.js` interpolates them at runtime.
 

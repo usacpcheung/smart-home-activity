@@ -2,6 +2,54 @@ const SUPPORTED_AUDIO_EXTENSIONS = new Set(['.mp3', '.wav']);
 const ABSOLUTE_PROTOCOL_PATTERN = /^(?:[a-z]+:)?\/\//i;
 const EXPLICIT_PROTOCOL_PATTERN = /^[a-z]+:\/\//i;
 
+let translate = null;
+
+function setAudioTranslator(fn) {
+  translate = typeof fn === 'function' ? fn : null;
+}
+
+function translateOrFallback(key, fallback, params) {
+  if (!key) {
+    return fallback;
+  }
+  const translator = translate;
+  if (typeof translator === 'function') {
+    try {
+      const result = translator(key, params);
+      if (typeof result === 'string' && result.length && result !== key) {
+        return result;
+      }
+    } catch (error) {
+      console.warn('Audio translation failed', error);
+    }
+  }
+  return fallback;
+}
+
+const AUDIO_REASON_FALLBACKS = {
+  missingPath: 'missing path',
+  unsupportedType: 'unsupported file type',
+  failedToLoad: 'failed to load'
+};
+
+const AUDIO_CLIP_FALLBACKS = {
+  placement: 'placement',
+  'aim-pass': 'aim (pass)',
+  'aim-fail': 'aim (fail)',
+  'ruleset-pass': 'ruleset (pass)',
+  'ruleset-fail': 'ruleset (fail)'
+};
+
+function getClipLabel(key) {
+  const fallback = key && AUDIO_CLIP_FALLBACKS[key] ? AUDIO_CLIP_FALLBACKS[key] : (key || 'clip');
+  return translateOrFallback(key ? `player.audio.clips.${key}` : null, fallback);
+}
+
+function describeAudioIssue(code) {
+  const fallback = AUDIO_REASON_FALLBACKS[code] || code;
+  return translateOrFallback(code ? `player.audio.reasons.${code}` : null, fallback);
+}
+
 function normalizePath(path) {
   return typeof path === 'string' ? path.trim() : '';
 }
@@ -102,25 +150,31 @@ function createAudioManager(manifest, baseUrl) {
   let currentFinishedTracker = null;
   let unlockAttempted = false;
 
-  function logMissingSource(key, reason) {
-    console.warn(`Audio clip unavailable for ${key}: ${reason}.`);
+  function logMissingSource(key, reasonCode) {
+    const clipLabel = getClipLabel(key);
+    const issue = describeAudioIssue(reasonCode);
+    const message = translateOrFallback('player.audio.errors.clipUnavailable', `Audio clip unavailable for ${clipLabel}: ${issue}.`, {
+      clip: clipLabel,
+      issue
+    });
+    console.warn(message);
   }
 
   function registerClip(key, relativePath) {
     const normalized = normalizePath(relativePath);
     if (!normalized) {
       if (relativePath !== undefined && relativePath !== null) {
-        logMissingSource(key, 'missing path');
+        logMissingSource(key, 'missingPath');
       }
       return;
     }
     const resolved = resolveAudioUrl(normalized, baseUrl);
     if (!resolved) {
-      logMissingSource(key, 'missing path');
+      logMissingSource(key, 'missingPath');
       return;
     }
     if (!hasSupportedExtension(resolved)) {
-      logMissingSource(key, 'unsupported file type');
+      logMissingSource(key, 'unsupportedType');
       return;
     }
     clipSources.set(key, resolved);
@@ -145,7 +199,7 @@ function createAudioManager(manifest, baseUrl) {
     }
     const audio = createClipCacheEntry(url, keyFromUrl(url), (failedKey, failedUrl) => {
       const descriptor = failedKey || failedUrl;
-      logMissingSource(descriptor, 'failed to load');
+      logMissingSource(descriptor, 'failedToLoad');
     });
     if (!audio) {
       return null;
@@ -161,10 +215,15 @@ function createAudioManager(manifest, baseUrl) {
       };
       const onError = (event) => {
         cleanup();
-        const error = event?.error instanceof Error
-          ? event.error
-          : new Error(`Failed to buffer audio clip: ${url}`);
-        reject(error);
+        if (event?.error instanceof Error) {
+          reject(event.error);
+          return;
+        }
+        const source = url;
+        const message = translateOrFallback('player.audio.errors.bufferFailed', `Failed to buffer audio clip: ${source}`, {
+          source
+        });
+        reject(new Error(message));
       };
       audio.addEventListener('canplaythrough', onReady, { once: true });
       audio.addEventListener('error', onError, { once: true });
@@ -182,7 +241,15 @@ function createAudioManager(manifest, baseUrl) {
         audio.load();
       } catch (error) {
         cleanup();
-        reject(error instanceof Error ? error : new Error(`Failed to load audio clip: ${url}`));
+        if (error instanceof Error) {
+          reject(error);
+        } else {
+          const source = url;
+          const message = translateOrFallback('player.audio.errors.loadFailed', `Failed to load audio clip: ${source}`, {
+            source
+          });
+          reject(new Error(message));
+        }
       }
     });
     ready.catch(() => {});
@@ -248,10 +315,15 @@ function createAudioManager(manifest, baseUrl) {
     };
 
     const onError = (event) => {
-      const error = event?.error instanceof Error
-        ? event.error
-        : new Error(`Audio playback failed for ${key || 'clip'}`);
-      settle(rejectFn, error);
+      if (event?.error instanceof Error) {
+        settle(rejectFn, event.error);
+        return;
+      }
+      const clipLabel = getClipLabel(key);
+      const message = translateOrFallback('player.audio.errors.playbackFailed', `Audio playback failed for ${clipLabel}.`, {
+        clip: clipLabel
+      });
+      settle(rejectFn, new Error(message));
     };
 
     audio.addEventListener('ended', onEnded);
@@ -355,7 +427,11 @@ function createAudioManager(manifest, baseUrl) {
       } catch (error) {
         completionTracker.reject(error);
         cleanup();
-        console.warn(`Audio playback failed for ${key}`, error);
+        const clipLabel = getClipLabel(key);
+        const message = translateOrFallback('player.audio.errors.playbackFailed', `Audio playback failed for ${clipLabel}.`, {
+          clip: clipLabel
+        });
+        console.warn(message, error);
         throw error;
       }
     })();
@@ -459,4 +535,4 @@ function createAudioManager(manifest, baseUrl) {
   };
 }
 
-export { createAudioManager };
+export { createAudioManager, setAudioTranslator };

@@ -250,6 +250,7 @@
         },
         "rulesets": {
             "lockTooltip": "Connect devices before changing rulesets.",
+            "nameFallback": "ruleset",
             "lockedMessage": "Connect devices before changing rulesets. \"{name}\" remains {state}.",
             "activated": "Activated {label}.",
             "deactivated": "Deactivated {label}.",
@@ -259,7 +260,11 @@
         "connect": {
             "buttonStatus": "Devices {verb}. {lockMessage} Active rulesets: {summary}.",
             "tooltip": "Place at least one device before connecting all.",
-            "connectAvailable": "Connect All is now available."
+            "connectAvailable": "Connect All is now available.",
+            "verbs": {
+                "connected": "connected",
+                "disconnected": "disconnected"
+            }
         },
         "placements": {
             "removed": "Removed {device} from {anchor}.",
@@ -310,6 +315,30 @@
             "rulesetMissing": "Missing: {labels}",
             "rulesetUnexpected": "Unexpected: {labels}",
             "rulesetReview": "Review the expected combinations and adjust your picks."
+        },
+        "audio": {
+            "errors": {
+                "clipUnavailable": "Audio clip unavailable for {clip}: {issue}.",
+                "bufferFailed": "Failed to buffer audio clip: {source}",
+                "loadFailed": "Failed to load audio clip: {source}",
+                "playbackFailed": "Audio playback failed for {clip}."
+            },
+            "reasons": {
+                "missingPath": "missing path",
+                "unsupportedType": "unsupported file type",
+                "failedToLoad": "failed to load"
+            },
+            "clips": {
+                "placement": "placement",
+                "aim-pass": "aim (pass)",
+                "aim-fail": "aim (fail)",
+                "ruleset-pass": "ruleset (pass)",
+                "ruleset-fail": "ruleset (fail)"
+            },
+            "warnings": {
+                "aimPlaybackFailed": "Aim audio playback failed",
+                "rulesetPlaybackFailed": "Ruleset audio playback failed"
+            }
         }
     }
 }
