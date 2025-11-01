@@ -1,6 +1,6 @@
 import { t } from '../core/i18n.js';
 import { qs } from '../core/utils.js';
-import { renderRulesEditor } from './aims-rules.js';
+import { renderRulesEditor, renameAnchorReferences } from './aims-rules.js';
 
 let stageEl = null;
 let anchorLayer = null;
@@ -54,6 +54,20 @@ function ensureElements(){
   }
 }
 
+function updateAnchorReferencesInPlacements(list, oldId, newId){
+  if(!Array.isArray(list) || !oldId || !newId || oldId === newId){
+    return false;
+  }
+  let updated = false;
+  for(const entry of list){
+    if(entry && entry.anchorId === oldId){
+      entry.anchorId = newId;
+      updated = true;
+    }
+  }
+  return updated;
+}
+
 function onAnchorsPanelChange(evt){
   const target = evt.target;
   if(!target || typeof target.closest !== 'function') return;
@@ -69,16 +83,24 @@ function onAnchorsPanelChange(evt){
   switch(target.name){
     case 'id': {
       const value = target.value.trim();
+      const currentId = anchor.id;
       if(!value){
-        target.value = anchor.id;
+        target.value = currentId;
+        return;
+      }
+      if(value === currentId){
+        target.value = currentId;
         return;
       }
       const exists = anchors.some((a, i)=>i !== index && a.id === value);
       if(exists){
-        target.value = anchor.id;
+        target.value = currentId;
         return;
       }
       anchor.id = value;
+      renameAnchorReferences(currentId, value);
+      updateAnchorReferencesInPlacements(stateRef?.placements, currentId, value);
+      updateAnchorReferencesInPlacements(stateRef?.stagedPlacements, currentId, value);
       break;
     }
     case 'label': {

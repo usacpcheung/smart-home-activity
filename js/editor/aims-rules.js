@@ -69,6 +69,46 @@ export function showRulesNotice(message, variant = 'info', options){
   renderRulesEditor();
 }
 
+function renameAnchorInExpression(node, oldId, newId){
+  if(!node || !oldId || !newId || oldId === newId){
+    return false;
+  }
+  if(node.type === 'group' && Array.isArray(node.children)){
+    let changed = false;
+    for(const child of node.children){
+      if(renameAnchorInExpression(child, oldId, newId)){
+        changed = true;
+      }
+    }
+    return changed;
+  }
+  if(node.type === 'clause' || node.deviceId || node.anchorId){
+    if(node.anchorId === oldId){
+      node.anchorId = newId;
+      return true;
+    }
+  }
+  return false;
+}
+
+export function renameAnchorReferences(oldId, newId){
+  if(!oldId || !newId || oldId === newId){
+    return false;
+  }
+  const checks = ensureRulesStructure();
+  let changed = false;
+  for(const entry of checks){
+    if(!entry || !entry.expression) continue;
+    if(renameAnchorInExpression(entry.expression, oldId, newId)){
+      changed = true;
+    }
+  }
+  if(changed){
+    updateRulesValidation(checks);
+  }
+  return changed;
+}
+
 function createClauseNode(overrides = {}){
   return {
     type: 'clause',
