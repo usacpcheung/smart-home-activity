@@ -424,10 +424,11 @@
 }
 
 .rule-row{
-  display:grid;
-  grid-template-columns:auto minmax(220px,1fr) minmax(220px,1fr) auto;
-  grid-template-areas:'select device anchor remove';
-  align-items:start;
+  --clause-field-basis:260px;
+  --clause-field-min:220px;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:flex-start;
   gap:12px;
   width:100%;
 }
@@ -452,25 +453,25 @@
   gap:4px;
   font-size:13px;
   color:var(--color-text-muted);
-  flex:1 1 160px;
-  min-width:0;
 }
 
-.rule-field--select{
-  grid-area:select;
+.rule-row .rule-field{
+  flex:1 1 var(--clause-field-basis);
+  min-width:min(var(--clause-field-min), 100%);
+}
+
+.rule-row .rule-field--select{
+  flex:0 0 auto;
   flex-direction:row;
   align-items:center;
   gap:6px;
-  flex:0 0 auto;
   white-space:nowrap;
 }
 
-.rule-field--device{
-  grid-area:device;
-}
-
-.rule-field--anchor{
-  grid-area:anchor;
+.rule-row .rule-field--device,
+.rule-row .rule-field--anchor{
+  flex:1 1 var(--clause-field-basis);
+  min-width:min(var(--clause-field-min), 100%);
 }
 
 .rule-field__label{
@@ -493,34 +494,19 @@
 }
 
 .rule-row button[data-action="delete-clause"]{
-  grid-area:remove;
+  flex:0 0 auto;
+  margin-left:auto;
   align-self:center;
-}
-
-@media (max-width: 900px){
-  .rule-row{
-    grid-template-columns:auto minmax(200px,1fr) minmax(200px,1fr);
-    grid-template-areas:
-      'select device anchor'
-      'select remove remove';
-  }
-
-  .rule-row button[data-action="delete-clause"]{
-    justify-self:start;
-  }
 }
 
 @media (max-width: 640px){
   .rule-row{
-    grid-template-columns:auto minmax(0,1fr);
-    grid-template-areas:
-      'select device'
-      'select anchor'
-      'select remove';
+    --clause-field-basis:220px;
+    gap:10px;
   }
 
   .rule-row button[data-action="delete-clause"]{
-    align-self:start;
+    margin-left:0;
   }
 }
 
