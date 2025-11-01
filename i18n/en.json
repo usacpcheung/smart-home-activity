@@ -9,7 +9,8 @@
         "locale": {
             "label": "Language",
             "names": {
-                "en": "English"
+                "en": "English",
+                "zh-Hant": "Traditional Chinese"
             }
         },
         "status": {
