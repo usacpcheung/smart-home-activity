@@ -633,7 +633,7 @@ function createClauseRow(aimId, clause, path, options){
   row.appendChild(selection);
 
   const deviceField = document.createElement('label');
-  deviceField.className = 'rule-field';
+  deviceField.className = 'rule-field rule-field--device';
   const deviceLabel = document.createElement('span');
   deviceLabel.className = 'rule-field__label';
   deviceLabel.textContent = translateOrDefault('editor.rules.device', 'Device');
@@ -655,7 +655,7 @@ function createClauseRow(aimId, clause, path, options){
   row.appendChild(deviceField);
 
   const anchorField = document.createElement('label');
-  anchorField.className = 'rule-field';
+  anchorField.className = 'rule-field rule-field--anchor';
   const anchorLabel = document.createElement('span');
   anchorLabel.className = 'rule-field__label';
   anchorLabel.textContent = translateOrDefault('editor.rules.anchor', 'Anchor');
