@@ -424,10 +424,12 @@
 }
 
 .rule-row{
+  --clause-field-basis:260px;
+  --clause-field-min:220px;
   display:flex;
-  align-items:flex-start;
-  gap:8px;
   flex-wrap:wrap;
+  align-items:flex-start;
+  gap:12px;
   width:100%;
 }
 
@@ -451,20 +453,30 @@
   gap:4px;
   font-size:13px;
   color:var(--color-text-muted);
-  flex:1 1 160px;
-  min-width:0;
+}
+
+.rule-row .rule-field{
+  flex:1 1 var(--clause-field-basis);
+  min-width:min(var(--clause-field-min), 100%);
+}
+
+.rule-row .rule-field--select{
+  flex:0 0 auto;
+  flex-direction:row;
+  align-items:center;
+  gap:6px;
+  white-space:nowrap;
+}
+
+.rule-row .rule-field--device,
+.rule-row .rule-field--anchor{
+  flex:1 1 var(--clause-field-basis);
+  min-width:min(var(--clause-field-min), 100%);
 }
 
 .rule-field__label{
   font-weight:600;
   color:var(--color-heading);
-}
-
-.rule-field--select{
-  flex-direction:row;
-  align-items:center;
-  gap:6px;
-  flex:0 0 auto;
 }
 
 .rule-field select{
@@ -479,6 +491,23 @@
 
 .rule-field--operator select{
   min-width:80px;
+}
+
+.rule-row button[data-action="delete-clause"]{
+  flex:0 0 auto;
+  margin-left:auto;
+  align-self:center;
+}
+
+@media (max-width: 640px){
+  .rule-row{
+    --clause-field-basis:220px;
+    gap:10px;
+  }
+
+  .rule-row button[data-action="delete-clause"]{
+    margin-left:0;
+  }
 }
 
 .rules-section button[data-action="delete-clause"],
