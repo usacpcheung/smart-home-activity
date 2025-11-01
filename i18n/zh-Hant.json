@@ -1,0 +1,345 @@
+{
+  "common": {
+    "app": {
+      "title": "智能家居活動"
+    },
+    "nav": {
+      "backToHome": "← 返回主頁"
+    },
+    "locale": {
+      "label": "語言",
+      "names": {
+        "en": "英文",
+        "zh-Hant": "繁體中文"
+      }
+    },
+    "status": {
+      "loading": "載入中…",
+      "loadingCatalog": "正在載入語系目錄…",
+      "noScenario": "未載入任何情境。",
+      "notAvailable": "不適用",
+      "untitled": "未命名",
+      "untitledScenario": "未命名情境",
+      "untitledFallback": "未命名",
+      "sampleScenario": "範例情境",
+      "noneSelected": "未選取",
+      "notProvided": "—",
+      "active": "啟用",
+      "inactive": "停用"
+    },
+    "aria": {
+      "editorStage": "編輯舞台（點擊以加入定位點）",
+      "playerStage": "遊玩舞台"
+    },
+    "messages": {
+      "titleCannotBeEmpty": "標題不可為空。請輸入標題。"
+    }
+  },
+  "index": {
+    "page": {
+      "title": "智能家居活動",
+      "heading": "智能家居活動",
+      "chooseMode": "選擇模式",
+      "editorDescription": "編輯器：建立情境（上傳背景、標記定位點、選擇裝置、定義目標／規則、匯出 JSON）。",
+      "playerDescription": "玩家：學生遊玩情境（選裝置、放置、連線、提交、動畫）。",
+      "openEditor": "開啟編輯器",
+      "scenariosHeading": "情境",
+      "uploadInstructions": "上傳你的情境資料夾（例如 /scenarios/mycase），需包含 scenario.json 與其背景圖片。",
+      "uploadLabel": "情境 JSON 檔案",
+      "uploadHint": "選擇從編輯器匯出的 .json 檔案。",
+      "storedHeading": "已儲存的情境",
+      "footerNote": "靜態、僅前端。適用 Apache／GitHub Pages。",
+      "table": {
+        "slot": "位置",
+        "title": "標題",
+        "fileName": "檔名",
+        "uploaded": "上傳時間",
+        "actions": "操作"
+      }
+    },
+    "scenarioStorage": {
+      "loadingSample": "正在載入範例情境…",
+      "sampleLoadError": "無法載入範例情境。請上傳情境 JSON 以開始。",
+      "sampleUnavailable": "範例情境不可用。請上傳情境 JSON 以繼續。",
+      "readingFile": "正在讀取情境檔案…",
+      "uploadFailed": "上傳失敗：{reason}",
+      "storageUnavailableSave": "無法使用本機儲存。情境無法儲存。",
+      "promptTitle": "請輸入此情境的標題：",
+      "uploadCanceled": "上傳已取消。未儲存情境。",
+      "savedToSlot": "已將「{title}」儲存至位置 {slot}。",
+      "invalidJson": "無效的 JSON 格式。",
+      "unexpectedError": "非預期錯誤。",
+      "sampleUnavailableShort": "範例情境不可用。請重新整理後再試。",
+      "missingEntry": "所選情境已不存在。請重新上傳。",
+      "storageUnavailablePlay": "無法使用本機儲存。無法播放已儲存的情境。",
+      "storageUnavailableClear": "無法使用本機儲存。沒有可清除的內容。",
+      "slotEmpty": "情境位置已是空的。",
+      "clearedFromStorage": "已自已儲存的情境中清除「{title}」。",
+      "sampleCannotBeCleared": "無法清除範例情境。",
+      "updateTitlePrompt": "更新此情境的標題：",
+      "titleUpdateCanceled": "標題更新已取消。",
+      "sampleRenamed": "範例情境已重新命名為「{title}」。",
+      "renameFailed": "無法更新情境標題。請再試一次。",
+      "scenarioRenamed": "情境已重新命名為「{title}」。",
+      "storageUnavailable": "無法使用本機儲存。上傳的情境將不會被儲存。",
+      "storageUnavailableList": "無法使用本機儲存。無法儲存上傳的情境。",
+      "fileReadError": "檔案內容無法以文字讀取。",
+      "errors": {
+        "invalidScenarioObject": "情境 JSON 必須為物件。",
+        "missingMetaTitle": "缺少「meta.title」字串。",
+        "missingStageBackground": "缺少「stage.background」字串。",
+        "missingDevicePool": "缺少「devicePool」物件。",
+        "missingAllowedIds": "「devicePool.allowedDeviceIds」必須為陣列。",
+        "invalidBackgroundUrl": "無效的「stage.background」URL。",
+        "sampleInvalid": "範例情境無效。"
+      },
+      "notes": {
+        "convertedBackground": "已將背景路徑轉換為絕對 URL。"
+      },
+      "actions": {
+        "editTitle": "編輯標題",
+        "play": "遊玩",
+        "clear": "清除"
+      },
+      "emptyStates": {
+        "none": "尚未上傳任何情境。"
+      }
+    }
+  },
+  "editor": {
+    "page": {
+      "title": "編輯器 — 智能家居活動",
+      "heading": "編輯器",
+      "steps": {
+        "allowedDevices": "1) 允許的裝置",
+        "uploadBackground": "2) 上傳背景",
+        "aimsRules": "3) 目標與規則",
+        "rulesets": "4) 規則組",
+        "exportImport": "匯出／匯入"
+      },
+      "buttons": {
+        "saveDraft": "儲存草稿",
+        "exportScenario": "匯出 scenario.json"
+      },
+      "footerTip": "提示：定位點會儲存正規化座標（0..1），可跨尺寸重用。"
+    },
+    "scenario": {
+      "defaultTitle": "新情境",
+      "ruleValidationWarning": "情境已儲存，但規則驗證回報問題。匯出前請檢視已標示的規則。"
+    },
+    "anchors": {
+      "empty": "尚無定位點。點擊舞台以新增。",
+      "fields": {
+        "id": "ID",
+        "label": "標籤",
+        "type": "類型"
+      },
+      "allowedDevices": "允許的裝置",
+      "allowedDevicesEmpty": "請選取允許的裝置以設定定位點存取。",
+      "delete": "刪除",
+      "defaultLabel": "定位點 {id}"
+    },
+    "aims": {
+      "fields": {
+        "id": "目標 ID",
+        "description": "描述"
+      },
+      "remove": "移除目標",
+      "empty": "尚無目標。新增一項來描述你的學習目標。",
+      "add": "新增目標",
+      "limitTooltip": "你最多可建立 {limit} 個目標。",
+      "limitMessage": "你最多可新增 {limit} 個目標。請先移除一個再新增。"
+    },
+    "rulesets": {
+      "empty": "尚無規則組。新增一組以定義可接受的規則組合。",
+      "add": "新增規則組",
+      "remove": "移除",
+      "fields": {
+        "text": "規則文字",
+        "correct": "標記為正確"
+      }
+    },
+    "rules": {
+      "select": "選取",
+      "device": "裝置",
+      "selectDevice": "選取裝置",
+      "anchor": "定位點",
+      "selectAnchor": "選取定位點",
+      "require": "要求",
+      "groupLogic": "群組邏輯",
+      "all": "全部（AND）",
+      "any": "任一（OR）",
+      "removeGroup": "移除群組",
+      "removeClause": "移除",
+      "emptyGroup": "此群組尚無子句。",
+      "addClause": "新增子句",
+      "addSubgroup": "新增子群組",
+      "groupSelected": "已選取群組",
+      "nestedGroupNote": "巢狀群組無法再包含其他子群組。請使用最上層群組來重新整理子句。",
+      "subgroupWarning": "僅能在主群組中新增子群組。",
+      "groupingWarning": "僅支援於最上層進行群組化子句。",
+      "addAimsFirst": "請先新增目標再設定規則。",
+      "validation": {
+        "depthLimit": "規則僅支援一層子群組。請將更深的群組移至最上層。",
+        "aimLabel": "目標「{aimId}」",
+        "checkLabel": "檢查 {index}",
+        "unknownLocation": "位置不明",
+        "issueDetail": "{label} 包含不支援的巢狀群組（{location}）。",
+        "summary": "{details} 目前規則最多僅支援一層子群組。"
+      }
+    },
+    "exportImport": {
+      "noScenario": "沒有可匯出的情境。",
+      "invalidFile": "無效的情境檔案。請選擇有效的匯出檔。",
+      "unableToLoad": "無法載入所選的情境檔案。",
+      "importFailed": "匯入情境失敗。請再試一次。",
+      "importInvalid": "匯入情境失敗。請確認檔案有效。"
+    }
+  },
+  "catalog": {
+    "categories": {
+      "hubs": { "name": "集線器與助理" },
+      "lighting": { "name": "照明" },
+      "climate": { "name": "氣候控制" },
+      "security": { "name": "安全與門禁" },
+      "energy": { "name": "能源與電力" },
+      "entertainment": { "name": "娛樂" },
+      "appliances": { "name": "智慧家電" },
+      "sensors": { "name": "感測器" }
+    },
+    "devices": {
+      "voice_assistant": { "name": "語音助理（中樞）" },
+      "smart_bulb": { "name": "智慧燈泡（主燈）" },
+      "wall_switch": { "name": "智慧牆壁開關" },
+      "smart_curtain": { "name": "智慧窗簾" },
+      "smart_thermostat": { "name": "智慧溫控器" },
+      "smart_fan": { "name": "智慧吊扇" },
+      "smart_air_conditioner": { "name": "智慧冷氣機" },
+      "door_lock": { "name": "智慧門鎖" },
+      "security_camera": { "name": "室內監視器" },
+      "smart_plug": { "name": "智慧插座" },
+      "power_strip": { "name": "智慧延長線" },
+      "smart_tv": { "name": "智慧電視" },
+      "smart_speaker": { "name": "多房間喇叭" },
+      "streaming_box": { "name": "串流媒體播放器" },
+      "smart_fridge": { "name": "智慧雪櫃" },
+      "smart_washer": { "name": "智慧洗衣機" },
+      "smart_vacuum": { "name": "智慧吸塵機器人" },
+      "ambient_light": { "name": "環境光感測器" },
+      "motion_sensor": { "name": "移動感測器" },
+      "door_sensor": { "name": "門／窗感測器" }
+    }
+  },
+  "player": {
+    "page": {
+      "title": "玩家 — 智能家居活動",
+      "heading": "玩家",
+      "deviceListHeading": "裝置清單",
+      "aimsHeading": "目標",
+      "controlsHeading": "控制",
+      "rulesetsHeading": "規則組",
+      "rulesetsHint": "請選擇你認為對此情境有效的組合。",
+      "rulesetsLegend": "情境規則組",
+      "rulesetsEmpty": "此情境未定義規則組。",
+      "buttons": {
+        "connectAll": "全部連線",
+        "disconnectAll": "全部斷線",
+        "submit": "提交我的設計",
+        "reset": "重設"
+      },
+      "footerTip": "拖曳、放到定位點、連線、提交。動畫會顯示每個目標的成功／失敗。"
+    },
+    "rulesets": {
+      "lockTooltip": "連線裝置後才能更改規則組。",
+      "nameFallback": "規則組",
+      "lockedMessage": "連線裝置後才能更改規則組。「{name}」仍為{state}。",
+      "activated": "已啟用 {label}。",
+      "deactivated": "已停用 {label}。",
+      "controlsUnlocked": "規則組控制項已解鎖。",
+      "controlsLocked": "連線裝置前規則組控制項將保持鎖定。"
+    },
+    "connect": {
+      "buttonStatus": "裝置已{verb}。{lockMessage} 作用中的規則組：{summary}。",
+      "tooltip": "至少放置一個裝置後才能全部連線。",
+      "connectAvailable": "已可使用「全部連線」。",
+      "verbs": {
+        "connected": "已連線",
+        "disconnected": "已斷線"
+      }
+    },
+    "placements": {
+      "removed": "已從 {anchor} 移除 {device}。",
+      "selectDeviceFirst": "請先選取裝置再選擇定位點。",
+      "anchorNotRecognized": "無法辨識的定位點。",
+      "deviceNotAllowed": "{device} 無法放在 {anchor}。",
+      "anchorFull": "{anchor} 上已放置四個裝置。",
+      "deviceAlreadyPlaced": "{device} 已放在 {anchor}。",
+      "placed": "已將 {device} 放在 {anchor}。",
+      "needsPlacement": "請至少放置一個裝置以啟用「全部連線」。"
+    },
+    "load": {
+      "storedUnavailable": "已儲存的情境不可用。將載入預設範例情境。",
+      "fallbackToDefault": "已回退至預設範例情境。",
+      "unableToLoad": "無法載入任何情境。",
+      "failedFromUrl": "無法自 {url} 載入情境：{error}",
+      "scenarioLoaded": "已載入情境：{title}"
+    },
+    "status": {
+      "rulesValidationFailed": "規則包含不支援的巢狀群組。無法評分。",
+      "evaluationComplete": "評分完成。",
+      "evaluationCompleteWithCounts": "評分完成：{passed}/{total} 個目標達成。",
+      "rulesetNotEvaluated": "規則組選擇未評分。",
+      "noRulesets": "此情境未提供規則組。",
+      "rulesetCorrect": "規則組選擇正確。",
+      "rulesetIncorrect": "規則組選擇不正確{details}。",
+      "rulesetMissing": "缺少：{labels}",
+      "rulesetUnexpected": "非預期：{labels}"
+    },
+    "stage": {
+      "removeFromAnchor": "從 {anchor} 移除 {device}",
+      "removeDevice": "移除 {device}",
+      "badgeFallback": "?",
+      "deviceFallback": "裝置",
+      "deviceNameFallback": "裝置",
+      "anchorNameFallback": "定位點"
+    },
+    "animations": {
+      "aimLabel": "目標",
+      "aimSatisfied": "目標達成",
+      "aimNotMet": "未達成目標",
+      "rulesetNotEvaluated": "規則組選擇未評分",
+      "rulesetNoComparison": "未進行規則組比對。",
+      "rulesetConnectPrompt": "請連線裝置後再試以取得分數。",
+      "rulesetCorrect": "規則組選擇正確",
+      "rulesetCorrectDetail": "你所選的組合與預期答案一致。",
+      "rulesetIncorrect": "規則組選擇不正確",
+      "rulesetMissing": "缺少：{labels}",
+      "rulesetUnexpected": "非預期：{labels}",
+      "rulesetReview": "檢視預期組合並調整你的選擇。"
+    },
+    "audio": {
+      "errors": {
+        "clipUnavailable": "無法提供 {clip} 的音效：{issue}。",
+        "bufferFailed": "緩衝音效失敗：{source}",
+        "loadFailed": "載入音效失敗：{source}",
+        "playbackFailed": "{clip} 的音效播放失敗。"
+      },
+      "reasons": {
+        "missingPath": "缺少路徑",
+        "unsupportedType": "不支援的檔案類型",
+        "failedToLoad": "載入失敗"
+      },
+      "clips": {
+        "placement": "放置",
+        "aim-pass": "目標（成功）",
+        "aim-fail": "目標（失敗）",
+        "ruleset-pass": "規則組（正確）",
+        "ruleset-fail": "規則組（錯誤）"
+      },
+      "warnings": {
+        "aimPlaybackFailed": "目標音效播放失敗",
+        "rulesetPlaybackFailed": "規則組音效播放失敗"
+      }
+    }
+  }
+}
