@@ -78,10 +78,14 @@ export function appendLocaleToUrl(url, locale) {
     return url;
   }
 
-  const baseOrigin = typeof window !== 'undefined' && window.location ? window.location.origin : 'http://localhost';
+  let baseHref = 'http://localhost/';
+  if (typeof window !== 'undefined' && window.location) {
+    const { href, origin, pathname } = window.location;
+    baseHref = href || `${origin || 'http://localhost'}${pathname || '/'}`;
+  }
 
   try {
-    const urlObject = new URL(url, baseOrigin);
+    const urlObject = new URL(url, baseHref);
     urlObject.searchParams.set('locale', locale);
 
     const isAbsolute = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(url);
